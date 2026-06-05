@@ -48,7 +48,7 @@ constexpr bool THROW_ON_MACRO_ERR = true;
 #define LOGWARN(...)                                                           \
   do {                                                                         \
     if (VERBOSITY <= LogLvl::WARNING)                                          \
-      fmt::print("[{}WARN {}] {}::{} ", ansi_code::BYEL, ansi_code::reset,     \
+      fmt::print("[{}WARN{}] {}::{} ", ansi_code::BYEL, ansi_code::reset,     \
                  __func__, __LINE__);                                          \
     fmt::println(__VA_ARGS__);                                                 \
   } while (0)
@@ -65,16 +65,7 @@ constexpr bool THROW_ON_MACRO_ERR = true;
 #define ASSERT_ERR(expr, ...)                                                  \
   if (!(expr))                                                                 \
   LOGERR(__VA_ARGS__)
-#define VK_CHECK(x)                                                            \
-  do {                                                                         \
-    VkResult err = x;                                                          \
-                                                                               \
-    if (err) {                                                                 \
-      LOGERR("Detected Vulkan error: \"{}\" -> {} ", #x,                       \
-             string_VkResult(err));                                            \
-      throw std::runtime_error("VkError");                                     \
-    }                                                                          \
-  } while (0)
+
 
 #ifndef NDEBUG
 #define ON_DEBUG(x) x

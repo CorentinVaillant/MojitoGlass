@@ -1,3 +1,21 @@
 [submodule "libs/fmt"]
 	path = libs/fmt
 	url = https://github.com/fmtlib/fmt.git
+[submodule "libs/https:/github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git"]
+	path = libs/https:/github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
+	url = https://github.com/charles-lunarg/vk-bootstrap.git
+[submodule "libs/vk-bootstrap"]
+	path = libs/vk-bootstrap
+	url = https://github.com/charles-lunarg/vk-bootstrap.git
+[submodule "libs/VulkanMemoryAllocator"]
+	path = libs/VulkanMemoryAllocator
+	url = https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
+[submodule "libs/volk"]
+	path = libs/volk
+	url = https://github.com/zeux/volk.git
+[submodule "libs/SDL"]
+	path = libs/SDL
+	url = https://github.com/libsdl-org/SDL.git
+[submodule "libs/doctest"]
+	path = libs/doctest
+	url = https://github.com/doctest/doctest.git

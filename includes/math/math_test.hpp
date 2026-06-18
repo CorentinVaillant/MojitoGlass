@@ -1,3 +1,3 @@
 #pragma once
 
-void math_test();
+#include "./vec2.hpp"

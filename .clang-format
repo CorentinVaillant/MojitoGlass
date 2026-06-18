@@ -1,0 +1,59 @@
+BasedOnStyle: LLVM
+
+# Alignment.
+AlignAfterOpenBracket: AlwaysBreak
+AlignConsecutiveMacros: true
+AlignConsecutiveAssignments: true
+AlignConsecutiveDeclarations: true
+AlignEscapedNewlines: Right
+AlignOperands: true
+AlignTrailingComments: true
+
+# Allow one-liners for case labels.
+AllowShortCaseLabelsOnASingleLine: true
+
+# Indentation.
+IndentWidth: 2
+ContinuationIndentWidth: 2
+UseTab: Never
+
+# Always list each argument on its own line.
+BinPackArguments: false
+BinPackParameters: false
+ExperimentalAutoDetectBinPacking: false
+AllowAllParametersOfDeclarationOnNextLine: false
+
+# Spaces.
+SpaceAfterCStyleCast: false
+SpaceBeforeParens: ControlStatements
+SpacesBeforeTrailingComments: 2
+SpacesInCStyleCastParentheses: false
+SpacesInContainerLiterals: false
+SpacesInSquareBrackets: false
+
+# Breaks.
+BreakBeforeBraces: LLVM
+BreakBeforeBinaryOperators: NonAssignment
+
+# Sorting includes.
+# * The main header gets priority 0, and goes at the top. The main header is
+#   essentally any header file which corresponds to the current source file
+#   (e.g "foo.h" is the main header for "foo.c"). However, only header files
+#   that match the regex in `IncludeIsMainRegex` are considered.
+# * The "log/mod/blah.h" headers get priority 1.
+# * The "blah.h" headers get priority 2.
+# * The <blah.h> headers get priority 3.
+SortIncludes: CaseSensitive
+IncludeBlocks: Regroup
+IncludeIsMainRegex: '$?'
+IncludeCategories:
+  - Regex: '^"log/mod/.*"'
+    Priority: 1
+  - Regex: '^".*"'
+    Priority: 2
+  - Regex: '^<.*>'
+    Priority: 3
+
+# Misc.
+IndentCaseLabels: true
+ReflowComments: true

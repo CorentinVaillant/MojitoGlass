@@ -14,6 +14,7 @@
 #include <span>
 #include <stdexcept>
 #include <string>
+#include <type_traits>
 #include <utility>
 #include <variant>
 
@@ -23,8 +24,7 @@
 #endif
 
 // -- Log Levels --
-enum LogLvl
-{
+enum LogLvl {
   CRITICAL = 50,
   FATAL    = CRITICAL,
   ERROR    = 40,
@@ -110,26 +110,21 @@ ON_DEBUG(x)
 
 //========== Types ==========//
 
-template <typename T, typename E> class Result
-{
-  union
-  {
+template <typename T, typename E> class Result {
+  union {
     T val;
     E unex;
   };
   bool has_value;
 
   // Constructor
-  struct OkTag
-  {};
-  struct ErrTag
-  {};
+  struct OkTag {};
+  struct ErrTag {};
 
   Result(OkTag, T &&v) : val(std::forward<T>(v)), has_value(true) {}
   Result(ErrTag, E &&e) : unex(std::forward<E>(e)), has_value(false) {}
 
-  auto destroy() noexcept
-  {
+  auto destroy() noexcept {
     if (has_value)
       val.~T();
     else
@@ -141,24 +136,21 @@ public:
   static auto err(E error) { return Result(ErrTag{}, std::move(error)); }
   ~Result() { destroy(); }
 
-  Result(const Result &o) : has_value(o.has_value)
-  {
+  Result(const Result &o) : has_value(o.has_value) {
     if (has_value)
       new (&val) T(o.val);
     else
       new (&unex) E(o.unex);
   }
 
-  Result(Result &&o) noexcept : has_value(o.has_value)
-  {
+  Result(Result &&o) noexcept : has_value(o.has_value) {
     if (has_value)
       new (&val) T(std::move(o.val));
     else
       new (&unex) E(std::move(o.unex));
   }
 
-  Result &operator=(Result o) noexcept
-  {
+  Result &operator=(Result o) noexcept {
     destroy();
     has_value = o.has_value;
     if (has_value)
@@ -174,45 +166,37 @@ public:
   explicit           operator bool() const noexcept { return has_value; }
 
   // ── Value access
-  auto &unwrap() &
-  {
+  auto &unwrap() & {
     assert_ok();
     return val;
   }
-  const auto &unwrap() const &
-  {
+  const auto &unwrap() const & {
     assert_ok();
     return val;
   }
-  auto unwrap() &&
-  {
+  auto unwrap() && {
     assert_ok();
     return std::move(val);
   }
 
-  auto &unwrap_err() &
-  {
+  auto &unwrap_err() & {
     assert_err();
     return unex;
   }
-  const auto &unwrap_err() const &
-  {
+  const auto &unwrap_err() const & {
     assert_err();
     return unex;
   }
 
-  auto value_or(T fallback) const &
-  {
+  auto value_or(T fallback) const & {
     return has_value ? val : std::move(fallback);
   }
-  auto value_or(T fallback) &&
-  {
+  auto value_or(T fallback) && {
     return has_value ? std::move(val) : std::move(fallback);
   }
 
   template <typename F>
-  auto map(F &&f) const & -> Result<std::invoke_result_t<F, const T &>, E>
-  {
+  auto map(F &&f) const & -> Result<std::invoke_result_t<F, const T &>, E> {
     using U = std::invoke_result_t<F, const T &>;
     if (has_value)
       return Result<U, E>::ok(f(val));
@@ -220,8 +204,7 @@ public:
   }
 
   template <typename F>
-  auto map_err(F &&f) const & -> Result<T, std::invoke_result_t<F, const E &>>
-  {
+  auto map_err(F &&f) const & -> Result<T, std::invoke_result_t<F, const E &>> {
     using E2 = std::invoke_result_t<F, const E &>;
     if (!has_value)
       return Result<T, E2>::err(f(unex));
@@ -229,8 +212,7 @@ public:
   }
 
   template <typename F>
-  auto and_then(F &&f) const & -> std::invoke_result_t<F, const T &>
-  {
+  auto and_then(F &&f) const & -> std::invoke_result_t<F, const T &> {
     using R = std::invoke_result_t<F, const T &>;
     if (has_value)
       return f(val);
@@ -238,8 +220,7 @@ public:
   }
 
   template <typename F>
-  auto or_else(F &&f) const & -> std::invoke_result_t<F, const E &>
-  {
+  auto or_else(F &&f) const & -> std::invoke_result_t<F, const E &> {
     using R = std::invoke_result_t<F, const E &>;
     if (!has_value)
       return f(unex);
@@ -247,20 +228,17 @@ public:
   }
 
 private:
-  void assert_ok() const
-  {
+  void assert_ok() const {
     if (!has_value)
       throw std::runtime_error("unwrap() on Err");
   }
-  void assert_err() const
-  {
+  void assert_err() const {
     if (has_value)
       throw std::runtime_error("unwrap_err() on Ok");
   }
 };
 
-class IError
-{
+class IError {
 public:
   virtual std::string to_string() const = 0;
   virtual ~IError()                     = default;
@@ -268,11 +246,15 @@ public:
 
 template <typename Err>
   requires std::derived_from<Err, IError>
-struct fmt::formatter<Err> : fmt::formatter<std::string_view>
-{
+struct fmt::formatter<Err> : fmt::formatter<std::string_view> {
   auto format(const Err &err, fmt::format_context &ctx) const
-    -> fmt::format_context::iterator
-  {
+    -> fmt::format_context::iterator {
     return fmt::formatter<std::string_view>::format(err.to_string(), ctx);
   }
 };
+
+//========== Concepts  ==========//
+
+template <typename T>
+concept GpuUploadable =
+  std::is_trivially_copyable_v<T> && std::is_standard_layout_v<T>;

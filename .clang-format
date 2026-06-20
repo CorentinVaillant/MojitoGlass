@@ -3,8 +3,19 @@ BasedOnStyle: LLVM
 # Alignment.
 AlignAfterOpenBracket: AlwaysBreak
 AlignConsecutiveMacros: true
-AlignConsecutiveAssignments: true
-AlignConsecutiveDeclarations: true
+
+AlignConsecutiveAssignments:
+  Enabled: true
+  AcrossEmptyLines: true
+  AcrossComments: false
+  AlignCompound: false
+  PadOperators: true
+
+AlignConsecutiveDeclarations:
+  Enabled: true
+  AcrossEmptyLines: true
+  AcrossComments: false
+
 AlignEscapedNewlines: Right
 AlignOperands: true
 AlignTrailingComments: true
@@ -32,7 +43,7 @@ SpacesInContainerLiterals: false
 SpacesInSquareBrackets: false
 
 # Breaks.
-BreakBeforeBraces: LLVM
+# BreakBeforeBraces: LLVM
 BreakBeforeBinaryOperators: NonAssignment
 
 # Sorting includes.

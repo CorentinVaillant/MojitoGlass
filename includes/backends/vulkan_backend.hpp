@@ -1,68 +1,59 @@
 #pragma once
 
+#include "backends/vulkan/allocator.hpp"
 #define VK_NO_PROTOTYPES
-#include <volk/volk.h>
-
-#include <vma/vk_mem_alloc.h>
-
-#include "./vulkan/default_values.hpp"
+#include "./vulkan/vma_usages.hpp"
 #include "backends.hpp"
 #include "common.hpp"
-#include "math/vec2.hpp"
 #include "surface.hpp"
+#include "vulkan/backend_builder.hpp"
 
-constexpr bool DEFAULT_VALIDATION_LAYER =
-#ifndef NDEBUG
-    true;
-#else
-    false;
-#endif
+#include <volk/volk.h>
 
-struct VkBackendBuilder {
-  std::string app_name = "Vk app";
-  bool use_validation_layer = DEFAULT_VALIDATION_LAYER;
-  UVec2 minimum_version = {1, 3};
-  VkPhysicalDeviceVulkan11Features physical_device_Vk11_feature =
-      DEFAULT_PHYSICAL_DEVICE_11_FEATURES;
-  VkPhysicalDeviceVulkan12Features physical_device_Vk12_feature =
-      DEFAULT_PHYSICAL_DEVICE_12_FEATURES;
-  VkPhysicalDeviceVulkan13Features physical_device_Vk13_feature =
-      DEFAULT_PHYSICAL_DEVICE_13_FEATURES;
-  VkPhysicalDeviceVulkan14Features physical_device_Vk14_feature =
-      DEFAULT_PHYSICAL_DEVICE_14_FEATURES;
-  std::vector<const char *> extensions = DEFAULT_EXTENSIONS;
-};
+// ===== VulkanBackend ===== //
 
-class VkBackend {
+class VulkanBackend {
   // == Attributs == //
-  bool nulled = true; // Set to true if the backend is not valid
+  bool nulled = true;  // Set to true if the backend is not valid
   static constexpr VkAllocationCallbacks *allocator =
-      nullptr; // > set to null for now, mayber change in the future to add
-               // custom allocator
-  VkInstance instance = VK_NULL_HANDLE;
-  VkDebugUtilsMessengerEXT debug_messenger = VK_NULL_HANDLE;
+    nullptr;  // > set to null for now, mayber change in the future to add
+              // custom allocator
+  VkInstance                 instance        = VK_NULL_HANDLE;
+  VkDebugUtilsMessengerEXT   debug_messenger = VK_NULL_HANDLE;
+  uint32_t                   api_version;
 
-  VkSurfaceKHR surface = VK_NULL_HANDLE;
-  VkPhysicalDevice physical_device = VK_NULL_HANDLE;
+  VkSurfaceKHR               surface                    = VK_NULL_HANDLE;
+
+  VkPhysicalDevice           physical_device            = VK_NULL_HANDLE;
+  VkPhysicalDeviceProperties physical_device_properties = {};
+
+  VkDevice                   device                     = VK_NULL_HANDLE;
+
+  VmaVulkanFunctions         vma_functions              = {};
 
   // == Constructors == //
-  VkBackend() = default;
-  NO_COPY(VkBackend);
+  VulkanBackend() = default;
+  NO_COPY(VulkanBackend);
 
   void nullify() noexcept;
 
 public:
-  VkBackend(VkBackend &&rval);
-  auto operator=(VkBackend &&rval) -> VkBackend &;
+  VulkanBackend(VulkanBackend &&rval) noexcept;
+  auto operator=(VulkanBackend &&rval) noexcept -> VulkanBackend &;
 
-  ~VkBackend() noexcept;
+  ~VulkanBackend() noexcept;
 
   // == Methods == //
 private:
-  auto init(VkBackendBuilder &builder, IVkSurface &surface)
-      -> std::optional<BackendCreationError>;
+  auto init(VulkanBackendBuilder &builder, IVkSurface &surface)
+    -> std::optional<BackendCreationError>;
+  auto copy(const VulkanBackend &other) noexcept -> void;
 
 public:
-  static auto create(VkBackendBuilder &builder, IVkSurface &surface)
-      -> Result<VkBackend, BackendCreationError>;
+  static auto create(VulkanBackendBuilder &builder, IVkSurface &surface)
+    -> Result<VulkanBackend, BackendCreationError>;
+
+  // -- Memory allocator
+  auto create_memory_allocator(AllocatorCreateFlags flags) const
+    -> VulkanMemoryAllocator;
 };

@@ -11,6 +11,7 @@ add_library(MojitoGlass ${LIB_TYPE}
     backends.cpp
     backends/vulkan_backend.cpp
     surface/sdl_surface.cpp
+    backends/vulkan/vma_usages.cpp
 )
 
 add_library(MojitoGlass::MojitoGlass ALIAS MojitoGlass)

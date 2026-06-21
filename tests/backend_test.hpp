@@ -13,7 +13,7 @@ using namespace mjt;
 TEST_CASE("VkBackend creation + destruction ") {
   SdlSurfaceParams params = SdlSurfaceParams::create_vulkan_presset("test_app");
 
-  auto             surface = SdlSurface::create(params).unwrap();
+  auto surface            = SdlSurface::create(params).unwrap();
 
   VulkanBackendBuilder builder;
   builder.app_name             = "test_app";
@@ -37,15 +37,15 @@ TEST_CASE("VkBackend creation + destruction ") {
 
   SUBCASE("Mem Allocator creation + destruction") {
 
-    AllocatorCreateFlags  flags = {AllocatorCreateBit::ExternallySynchronized};
+    AllocatorCreateFlags flags = {AllocatorCreateBit::ExternallySynchronized};
 
     VulkanMemoryAllocator allocator = backend.create_memory_allocator(flags);
 
     SUBCASE("Buffer creation + destruction") {
       struct Foo {
         uint32_t bar1;
-        float    bar2;
-        char     bar3;
+        float bar2;
+        char bar3;
       };
 
       VulkanBuffer<Foo> buffer = allocator.create_buffer<Foo>(
@@ -58,7 +58,7 @@ TEST_CASE("VkBackend creation + destruction ") {
 
       SUBCASE("Multiple buffers") {
         std::vector<VulkanBuffer<uint8_t>> buffers;
-        VulkanBufferUsage                  usage{
+        VulkanBufferUsage usage{
           VulkanBufferUsageBit::StorageBuffer,
           VulkanBufferUsageBit::TransferSrc,
           VulkanBufferUsageBit::TransferDst};
@@ -103,6 +103,30 @@ TEST_CASE("VkBackend creation + destruction ") {
           buffers.emplace_back(
             allocator2.create_buffer<uint8_t>(i + 1, usage, MemoryUsage::Auto));
         }
+      }
+    }
+  }
+
+  SUBCASE("Fence creation + destruction") {
+
+    auto fence = backend.create_fence();
+
+    SUBCASE("Fence creation + destruction 2") {
+      auto fence2 = backend.create_fence(true);
+
+      SUBCASE("Wait for fences") {
+        CHECK(fence.wait(1'000'000).is_err());
+        CHECK(fence2.wait(1'000'000).is_ok());
+      }
+
+      SUBCASE("Check signaled") {
+        CHECK(fence.signaled() == false);
+        CHECK(fence2.signaled() == true);
+      }
+
+      SUBCASE("Fence reset"){
+        fence2.reset();
+        CHECK(fence2.signaled() == false);
       }
     }
   }

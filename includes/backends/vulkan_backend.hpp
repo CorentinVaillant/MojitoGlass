@@ -1,5 +1,6 @@
 #pragma once
 
+#include "backends/vulkan/fence.hpp"
 #define VK_NO_PROTOTYPES
 #include <volk/volk.h>
 
@@ -58,6 +59,9 @@ public:
   // -- Memory allocator
   auto create_memory_allocator(AllocatorCreateFlags flags) const
     -> VulkanMemoryAllocator;
+
+  // -- Fence
+  auto create_fence(bool signaled = false) const -> VulkanFence;
 };
 
 }  // namespace mjt

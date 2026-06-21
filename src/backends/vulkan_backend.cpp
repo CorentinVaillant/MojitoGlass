@@ -3,6 +3,7 @@
 #include "VkBootstrap.h"
 #include "backends.hpp"
 #include "backends/vulkan/allocator.hpp"
+#include "backends/vulkan/fence.hpp"
 #include "backends/vulkan/helpers.hpp"
 
 namespace mjt {
@@ -12,7 +13,7 @@ auto VulkanBackend::create(VulkanBackendBuilder &builder, IVkSurface &surface)
 
   VulkanBackend result{};
 
-  auto          error = result.init(builder, surface);
+  auto error = result.init(builder, surface);
 
   if (error)
     return Result<VulkanBackend, BackendCreationError>::err(error.value());
@@ -21,7 +22,7 @@ auto VulkanBackend::create(VulkanBackendBuilder &builder, IVkSurface &surface)
 }
 
 static bool volk_init = false;
-auto        VulkanBackend::init(
+auto VulkanBackend::init(
   VulkanBackendBuilder &builder,
   IVkSurface &surface_interface) -> std::optional<BackendCreationError> {
   nulled = false;
@@ -34,7 +35,7 @@ auto        VulkanBackend::init(
 
   // Building instance
   vkb::InstanceBuilder inst_builder;
-  auto                 inst_ret =
+  auto inst_ret =
     inst_builder.set_app_name(builder.app_name.c_str())
       .request_validation_layers(builder.use_validation_layer)
       .use_default_debug_messenger()
@@ -70,7 +71,7 @@ auto        VulkanBackend::init(
 
   // Init the physical device
   vkb::PhysicalDeviceSelector selector(vkb_instance);
-  auto                        selector_ret =
+  auto selector_ret =
     selector
       //...
       .set_minimum_version(builder.minimum_version.x, builder.minimum_version.y)
@@ -184,5 +185,17 @@ auto VulkanBackend::create_memory_allocator(AllocatorCreateFlags flags) const
   alloc_info.pVulkanFunctions     = &vma_functions;
 
   return VulkanMemoryAllocator(alloc_info);
+}
+
+// -- Fence
+
+auto VulkanBackend::create_fence(bool signaled) const -> VulkanFence {
+  VkFenceCreateInfo create_info{
+    .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+    .pNext = nullptr,
+    .flags = signaled ? VK_FENCE_CREATE_SIGNALED_BIT : 0x0u,
+  };
+
+  return VulkanFence(device, &create_info, allocator);
 }
 }  // namespace mjt

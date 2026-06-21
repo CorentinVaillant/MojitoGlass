@@ -4,6 +4,8 @@
 
 #include "surface/sdl_surface.hpp"
 
+using namespace mjt;
+
 TEST_CASE("SDL surface creation") {
   SdlSurfaceParams params = SdlSurfaceParams::create_vulkan_presset("test");
 

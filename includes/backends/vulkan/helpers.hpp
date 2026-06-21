@@ -1,9 +1,9 @@
 #pragma once
 
 #define VK_NO_PROTOTYPES
-#include "math/vec4.hpp"
-
 #include <volk/volk.h>
+
+#include "math/vec4.hpp"
 #include <vulkan/vk_enum_string_helper.h>
 
 #define STD140_ALIGNEMENT 16
@@ -18,6 +18,8 @@
       throw std::runtime_error("VkError");                                     \
     }                                                                          \
   } while (0)
+
+namespace mjt {
 
 static constexpr auto compressed_version_to_uvec4(uint32_t vk_version)
   -> U32Vec4 {
@@ -68,3 +70,4 @@ struct EnumFlagsWrapper {
     return {flags | flags.flags};
   }
 };
+}  // namespace mjt

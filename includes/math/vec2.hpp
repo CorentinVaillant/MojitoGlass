@@ -1,6 +1,9 @@
 #pragma once
 
 #include "common.hpp"
+
+namespace mjt {
+
 template <typename T> struct VectorMath2 {
   using This = VectorMath2<T>;
 
@@ -22,18 +25,20 @@ template <typename T> struct VectorMath2 {
   //...
 };
 
-using Vec2 = VectorMath2<float>;
-using DVec2 = VectorMath2<double>;
+using Vec2    = VectorMath2<float>;
+using DVec2   = VectorMath2<double>;
 
-using IVec2 = VectorMath2<int>;
-using I8Vec2 = VectorMath2<int8_t>;
+using IVec2   = VectorMath2<int>;
+using I8Vec2  = VectorMath2<int8_t>;
 using I16Vec2 = VectorMath2<int16_t>;
 using I32Vec2 = VectorMath2<int32_t>;
 using I64Vec2 = VectorMath2<int64_t>;
 
-using UVec2 = VectorMath2<unsigned int>;
-using U8Vec2 = VectorMath2<uint8_t>;
+using UVec2   = VectorMath2<unsigned int>;
+using U8Vec2  = VectorMath2<uint8_t>;
 using U16Vec2 = VectorMath2<uint16_t>;
 using U32Vec2 = VectorMath2<uint32_t>;
 using U64Vec2 = VectorMath2<uint64_t>;
-using SVec2 = VectorMath2<size_t>;
+using SVec2   = VectorMath2<size_t>;
+
+}  // namespace mjt

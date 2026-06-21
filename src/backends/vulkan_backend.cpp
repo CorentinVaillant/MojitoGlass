@@ -5,6 +5,8 @@
 #include "backends/vulkan/allocator.hpp"
 #include "backends/vulkan/helpers.hpp"
 
+namespace mjt {
+
 auto VulkanBackend::create(VulkanBackendBuilder &builder, IVkSurface &surface)
   -> Result<VulkanBackend, BackendCreationError> {
 
@@ -183,3 +185,4 @@ auto VulkanBackend::create_memory_allocator(AllocatorCreateFlags flags) const
 
   return VulkanMemoryAllocator(alloc_info);
 }
+}  // namespace mjt

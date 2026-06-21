@@ -1,9 +1,11 @@
 #pragma once
 
 #define VK_NO_PROTOTYPES
+#include <volk/volk.h>
+
 #include "common.hpp"
 
-#include <volk/volk.h>
+namespace mjt {
 
 // Features
 constexpr VkPhysicalDeviceVulkan11Features DEFAULT_PHYSICAL_DEVICE_11_FEATURES{
@@ -122,3 +124,5 @@ constexpr VkPhysicalDeviceVulkan14Features DEFAULT_PHYSICAL_DEVICE_14_FEATURES{
 // Extensions
 constexpr std::initializer_list<const char *> DEFAULT_EXTENSIONS{
   VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME};
+
+}  // namespace mjt

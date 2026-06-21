@@ -1,14 +1,16 @@
 #pragma once
 
-#include "backends/vulkan/allocator.hpp"
 #define VK_NO_PROTOTYPES
+#include <volk/volk.h>
+
 #include "./vulkan/vma_usages.hpp"
 #include "backends.hpp"
+#include "backends/vulkan/allocator.hpp"
 #include "common.hpp"
 #include "surface.hpp"
 #include "vulkan/backend_builder.hpp"
 
-#include <volk/volk.h>
+namespace mjt {
 
 // ===== VulkanBackend ===== //
 
@@ -18,18 +20,18 @@ class VulkanBackend {
   static constexpr VkAllocationCallbacks *allocator =
     nullptr;  // > set to null for now, mayber change in the future to add
               // custom allocator
-  VkInstance                 instance        = VK_NULL_HANDLE;
-  VkDebugUtilsMessengerEXT   debug_messenger = VK_NULL_HANDLE;
-  uint32_t                   api_version;
+  VkInstance instance                      = VK_NULL_HANDLE;
+  VkDebugUtilsMessengerEXT debug_messenger = VK_NULL_HANDLE;
+  uint32_t api_version;
 
-  VkSurfaceKHR               surface                    = VK_NULL_HANDLE;
+  VkSurfaceKHR surface                                  = VK_NULL_HANDLE;
 
-  VkPhysicalDevice           physical_device            = VK_NULL_HANDLE;
+  VkPhysicalDevice physical_device                      = VK_NULL_HANDLE;
   VkPhysicalDeviceProperties physical_device_properties = {};
 
-  VkDevice                   device                     = VK_NULL_HANDLE;
+  VkDevice device                                       = VK_NULL_HANDLE;
 
-  VmaVulkanFunctions         vma_functions              = {};
+  VmaVulkanFunctions vma_functions                      = {};
 
   // == Constructors == //
   VulkanBackend() = default;
@@ -57,3 +59,5 @@ public:
   auto create_memory_allocator(AllocatorCreateFlags flags) const
     -> VulkanMemoryAllocator;
 };
+
+}  // namespace mjt

@@ -8,6 +8,8 @@
 #include <cstdint>
 #include <doctest/doctest.h>
 
+using namespace mjt;
+
 TEST_CASE("VkBackend creation + destruction ") {
   SdlSurfaceParams params = SdlSurfaceParams::create_vulkan_presset("test_app");
 

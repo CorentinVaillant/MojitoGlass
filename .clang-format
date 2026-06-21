@@ -12,8 +12,8 @@ AlignConsecutiveAssignments:
   PadOperators: true
 
 AlignConsecutiveDeclarations:
-  Enabled: true
-  AcrossEmptyLines: true
+  Enabled: false
+  AcrossEmptyLines: false
   AcrossComments: false
 
 AlignEscapedNewlines: Right
@@ -46,6 +46,7 @@ SpacesInSquareBrackets: false
 # BreakBeforeBraces: LLVM
 BreakBeforeBinaryOperators: NonAssignment
 
+
 # Sorting includes.
 # * The main header gets priority 0, and goes at the top. The main header is
 #   essentally any header file which corresponds to the current source file
@@ -54,16 +55,16 @@ BreakBeforeBinaryOperators: NonAssignment
 # * The "log/mod/blah.h" headers get priority 1.
 # * The "blah.h" headers get priority 2.
 # * The <blah.h> headers get priority 3.
-SortIncludes: CaseSensitive
-IncludeBlocks: Regroup
-IncludeIsMainRegex: '$?'
-IncludeCategories:
-  - Regex: '^"log/mod/.*"'
-    Priority: 1
-  - Regex: '^".*"'
-    Priority: 2
-  - Regex: '^<.*>'
-    Priority: 3
+# SortIncludes: CaseSensitive
+# IncludeBlocks: Regroup
+# IncludeIsMainRegex: '$?'
+# IncludeCategories:
+#   - Regex: '^"log/mod/.*"'
+#     Priority: 1
+#   - Regex: '^".*"'
+#     Priority: 2
+#   - Regex: '^<.*>'
+#     Priority: 3
 
 # Misc.
 IndentCaseLabels: true

@@ -1,16 +1,15 @@
 #pragma once
 
-#include "common.hpp"
-#include "fmt/base.h"
-#include "fmt/format.h"
-#include "math/vec2.hpp"
-#include "surface.hpp"
-
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_init.h>
 #include <SDL3/SDL_video.h>
-#include <string>
+
+#include "common.hpp"
+#include "math/vec2.hpp"
+#include "surface.hpp"
+
+namespace mjt {
 
 enum class SingleSdlSurfaceInitFlag : uint32_t {
   AUDIO    = SDL_INIT_AUDIO,
@@ -113,10 +112,10 @@ struct SdlSurfaceCreationError : IError {
 };
 
 struct SdlSurfaceParams {
-  SdlWindowFlags      window_flags;
+  SdlWindowFlags window_flags;
   SdlSurfaceInitFlags init_flags = {SingleSdlSurfaceInitFlag::VIDEO};
-  SVec2               size       = {720, 480};
-  const char         *app_name;
+  SVec2 size                     = {720, 480};
+  const char *app_name;
 
   static auto create_vulkan_presset(const char *app_name) -> SdlSurfaceParams {
     return SdlSurfaceParams{
@@ -131,7 +130,7 @@ struct SdlSurfaceParams {
 class SdlSurface : public IVkSurface {
 private:
   // == Attributs == //
-  bool        valid_instance = false;
+  bool valid_instance = false;
 
   SDL_Window *window;
   // == Constructors == //
@@ -153,10 +152,12 @@ private:
   // == Methods == //
 public:
   auto get_vk_surface(
-    VkInstance                   vulkan_instance,
+    VkInstance vulkan_instance,
     const VkAllocationCallbacks *allocator)
     -> Result<VkSurfaceKHR, VkSurfaceError> override;
 
   static auto create(SdlSurfaceParams &params)
     -> Result<SdlSurface, SdlSurfaceCreationError>;
 };
+
+}  // namespace mjt

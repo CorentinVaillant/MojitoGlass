@@ -1,6 +1,9 @@
 #pragma once
 
 #include "common.hpp"
+
+namespace mjt {
+
 template <typename T> struct VectorMath4 {
   using This = VectorMath4<T>;
 
@@ -41,3 +44,5 @@ using U16Vec4 = VectorMath4<uint16_t>;
 using U32Vec4 = VectorMath4<uint32_t>;
 using U64Vec4 = VectorMath4<uint64_t>;
 using SVec4   = VectorMath4<size_t>;
+
+}  // namespace mjt

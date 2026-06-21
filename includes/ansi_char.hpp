@@ -82,8 +82,8 @@ constexpr const char *BHCYN = "\e[1;96m";
 constexpr const char *BHWHT = "\e[1;97m";
 
 // Reset
-constexpr const char *reset = "\e[0m";
-constexpr const char *CRESET = "\e[0m";
+constexpr const char *reset       = "\e[0m";
+constexpr const char *CRESET      = "\e[0m";
 constexpr const char *COLOR_RESET = "\e[0m";
 
-} // namespace ansi_code
+}  // namespace ansi_code

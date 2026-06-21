@@ -3,10 +3,11 @@
 // std includes :
 #include "ansi_char.hpp"
 
-#include <array>
 #include <fmt/base.h>
 #include <fmt/core.h>
 #include <fmt/format.h>
+
+#include <array>
 #include <functional>
 #include <initializer_list>
 #include <new>
@@ -14,9 +15,12 @@
 #include <span>
 #include <stdexcept>
 #include <string>
+#include <system_error>
 #include <type_traits>
 #include <utility>
 #include <variant>
+
+namespace mjt {
 
 //========== LOG/DEBUG ==========//
 #ifndef VERBOSITY
@@ -163,7 +167,7 @@ public:
   // ── Observers
   [[nodiscard]] bool is_ok() const noexcept { return has_value; }
   [[nodiscard]] bool is_err() const noexcept { return !has_value; }
-  explicit           operator bool() const noexcept { return has_value; }
+  explicit operator bool() const noexcept { return has_value; }
 
   // ── Value access
   auto &unwrap() & {
@@ -243,18 +247,21 @@ public:
   virtual std::string to_string() const = 0;
   virtual ~IError()                     = default;
 };
-
+}  // namespace mjt
 template <typename Err>
-  requires std::derived_from<Err, IError>
+  requires std::derived_from<Err, mjt::IError>
 struct fmt::formatter<Err> : fmt::formatter<std::string_view> {
   auto format(const Err &err, fmt::format_context &ctx) const
     -> fmt::format_context::iterator {
     return fmt::formatter<std::string_view>::format(err.to_string(), ctx);
   }
 };
+namespace mjt {
 
 //========== Concepts  ==========//
 
 template <typename T>
 concept GpuUploadable =
   std::is_trivially_copyable_v<T> && std::is_standard_layout_v<T>;
+
+}  // namespace mjt

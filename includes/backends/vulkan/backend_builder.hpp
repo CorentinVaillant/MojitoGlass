@@ -3,6 +3,8 @@
 #include "./default_values.hpp"
 #include "math/vec2.hpp"
 
+namespace mjt {
+
 constexpr bool DEFAULT_VALIDATION_LAYER =
 #ifndef NDEBUG
   true;
@@ -111,3 +113,4 @@ struct VulkanBackendBuilder {
 
   VulkanDeviceExtensions    device_extensions;
 };
+}  // namespace mjt

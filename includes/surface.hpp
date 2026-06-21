@@ -5,10 +5,13 @@
 
 #include "common.hpp"
 
+namespace mjt {
+
 struct VkSurfaceError : public IError {
   const char *error;
 
   VkSurfaceError(const char *error_in) : error(error_in) {}
+
 public:
   auto to_string() const -> std::string override final {
     return fmt::format("Sdl error : {}", error);
@@ -17,9 +20,11 @@ public:
 
 class IVkSurface {
 public:
-  virtual auto get_vk_surface(VkInstance vulkan_instance,
-                              const VkAllocationCallbacks *allocator)
-      -> Result<VkSurfaceKHR, VkSurfaceError> = 0;
+  virtual auto get_vk_surface(
+    VkInstance vulkan_instance,
+    const VkAllocationCallbacks *allocator)
+    -> Result<VkSurfaceKHR, VkSurfaceError> = 0;
 
-  virtual ~IVkSurface() = default;
+  virtual ~IVkSurface()                     = default;
 };
+}  // namespace mjt

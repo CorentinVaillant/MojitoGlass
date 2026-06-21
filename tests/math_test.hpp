@@ -4,6 +4,8 @@
 
 #include "math/vec2.hpp"
 
+using namespace mjt;
+
 TEST_CASE("Vec2 tests") {
   Vec2 e = {0, 0};
 

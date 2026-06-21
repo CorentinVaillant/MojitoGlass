@@ -9,6 +9,8 @@
 
 #include <volk/volk.h>
 
+namespace mjt {
+
 // Forward declarations :
 class VulkanBackend;
 
@@ -276,3 +278,5 @@ public:
       allocator, buffer, allocation, allocation_info, count);
   }
 };
+
+}  // namespace mjt

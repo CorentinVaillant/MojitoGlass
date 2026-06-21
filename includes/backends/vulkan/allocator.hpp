@@ -30,16 +30,16 @@ using AllocatorCreateFlags =
   EnumFlagsWrapper<VmaAllocatorCreateFlags, AllocatorCreateBit>;
 
 enum class VulkanBufferUsageBit : uint32_t {
-  TransferSrcBit         = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-  TransferDstBit         = VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-  UniformTexelBufferBit  = VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT,
-  StorageTexelBufferBit  = VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT,
-  UniformBufferBit       = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-  StorageBufferBit       = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-  IndexBufferBit         = VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-  VertexBufferBit        = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-  IndirectBufferBit      = VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT,
-  ShaderDeviceAddressBit = VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+  TransferSrc         = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+  TransferDst         = VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+  UniformTexelBuffer  = VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT,
+  StorageTexelBuffer  = VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT,
+  UniformBuffer       = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+  StorageBuffer       = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+  IndexBuffer         = VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+  VertexBuffer        = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+  IndirectBuffer      = VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT,
+  ShaderDeviceAddress = VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
 };
 
 using VulkanBufferUsage =
@@ -100,6 +100,7 @@ template <GpuUploadable T> class VulkanBuffer {
         alloc_info(allocation_info), count(n) {}
 
 public:
+  NO_COPY(VulkanBuffer);
   VulkanBuffer(VulkanBuffer &&rval) noexcept {
     copy(rval);
     rval.nullify();
@@ -139,6 +140,49 @@ private:
     alloc_info = other.alloc_info;
     count      = other.count;
   }
+
+public:
+  auto write(size_t dst_offset, std::span<const T> src) -> void {
+    ASSERT_ERR(allocator != VK_NULL_HANDLE, "write on a destroyed buffer.");
+    ASSERT_ERR(
+      alloc_info.pMappedData != nullptr, "alloc_info.pMappedData is null.");
+    ASSERT_ERR(dst_offset < count, "dst_offset >= count.")
+    memcpy(
+      reinterpret_cast<uint8_t *>(alloc_info.pMappedData)
+        + dst_offset * sizeof(T),
+      reinterpret_cast<const uint8_t *>(src.data()),
+      std::min((count - dst_offset) * sizeof(T), src.size_bytes()));
+  }
+
+  inline auto write(size_t dst_offset, size_t src_count, const T *src) {
+    write(dst_offset, {src, src_count});
+  }
+  inline auto write(std::span<const T> src) { write(0, src); }
+
+  auto        flush() -> void {
+    VK_CHECK(vmaFlushAllocation(allocator, allocation, 0, alloc_info.size));
+  }
+  auto invalidate() -> void {
+    VK_CHECK(
+      vmaInvalidateAllocation(allocator, allocation, 0, alloc_info.size));
+  }
+
+  auto read(size_t src_offset, std::span<T> dst) -> void {
+    ASSERT_ERR(allocator != VK_NULL_HANDLE, "read on a destroyed buffer.");
+    ASSERT_ERR(
+      alloc_info.pMappedData != nullptr, "alloc_info.pMappedData is null.");
+    ASSERT_ERR(src_offset < count, "src_offset >= count.")
+    memcpy(
+      reinterpret_cast<uint8_t *>(dst.data()),
+      reinterpret_cast<const uint8_t *>(alloc_info.pMappedData)
+        + src_offset * sizeof(T),
+      std::min((count - src_offset) * sizeof(T), dst.size_bytes()));
+  }
+
+  inline auto read(size_t src_offset, size_t dst_count, T *dst) {
+    read(src_offset, {dst, dst_count});
+  }
+  inline auto read(std::span<T> dst) { read(0, dst); }
 };
 
 // ===== VulkanMemoryAllocator =====
@@ -206,7 +250,7 @@ public:
 
     };
 
-    VmaAllocationCreateInfo alloc_info{
+    VmaAllocationCreateInfo alloc_create_info{
       .flags          = alloc_create_flag.flags,
       .usage          = static_cast<VmaMemoryUsage>(mem_usage),
       .requiredFlags  = 0x0,
@@ -223,7 +267,7 @@ public:
     VK_CHECK(vmaCreateBuffer(
       allocator,
       &buffer_info,
-      &alloc_info,
+      &alloc_create_info,
       &buffer,
       &allocation,
       &allocation_info));

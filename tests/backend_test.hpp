@@ -47,14 +47,42 @@ TEST_CASE("VkBackend creation + destruction ") {
       };
 
       VulkanBuffer<Foo> buffer = allocator.create_buffer<Foo>(
-        5, {VulkanBufferUsageBit::StorageBufferBit}, MemoryUsage::Unknown);
+        10,
+        {VulkanBufferUsageBit::StorageBuffer,
+         VulkanBufferUsageBit::TransferSrc,
+         VulkanBufferUsageBit::TransferDst},
+        MemoryUsage::Auto,
+        {AllocationCreateBits::Mapped, AllocationCreateBits::HostAccessRandom});
 
       SUBCASE("Multiple buffers") {
         std::vector<VulkanBuffer<uint8_t>> buffers;
-        VulkanBufferUsage usage{VulkanBufferUsageBit::StorageBufferBit};
+        VulkanBufferUsage                  usage{
+          VulkanBufferUsageBit::StorageBuffer,
+          VulkanBufferUsageBit::TransferSrc,
+          VulkanBufferUsageBit::TransferDst};
+
         for (int i = 0; i < 10; i++) {
           buffers.emplace_back(
             allocator.create_buffer<uint8_t>(i + 1, usage, MemoryUsage::Auto));
+        }
+      }
+
+      SUBCASE("Buffer read & write ") {
+        std::vector<Foo> foos_src;
+        for (int i = 0; i < 10; i++)
+          foos_src.push_back({uint32_t(i), float(i), char(i)});
+        buffer.write(foos_src);
+
+        buffer.flush();
+
+        std::vector<Foo> foos_dst;
+        foos_dst.resize(10);
+        buffer.read(foos_dst);
+
+        for (int i = 0; i < 10; i++) {
+          CHECK(foos_src[i].bar1 == foos_dst[i].bar1);
+          CHECK(foos_src[i].bar2 == foos_dst[i].bar2);
+          CHECK(foos_src[i].bar3 == foos_dst[i].bar3);
         }
       }
     }
@@ -64,7 +92,7 @@ TEST_CASE("VkBackend creation + destruction ") {
 
       SUBCASE("Multiple allocator buffers") {
         std::vector<VulkanBuffer<uint8_t>> buffers;
-        VulkanBufferUsage usage{VulkanBufferUsageBit::StorageBufferBit};
+        VulkanBufferUsage usage{VulkanBufferUsageBit::StorageBuffer};
         for (int i = 0; i < 5; i++) {
           buffers.emplace_back(
             allocator.create_buffer<uint8_t>(i + 1, usage, MemoryUsage::Auto));

@@ -3,6 +3,7 @@
 // std includes :
 #include "ansi_char.hpp"
 
+#include <concepts>
 #include <fmt/base.h>
 #include <fmt/core.h>
 #include <fmt/format.h>
@@ -231,6 +232,15 @@ public:
     return R::ok(val);
   }
 
+  template <typename S>
+  auto replace_ok(S &&val) const & -> Result<S, E> {
+    using R = Result<S, E>;
+    if (!has_value) {
+      return R::err(unex);
+    }
+    return R::ok(std::move(val));
+  }
+
 private:
   void assert_ok() const {
     if (!has_value)
@@ -241,6 +251,7 @@ private:
       throw std::runtime_error("unwrap_err() on Ok");
   }
 };
+
 
 class IError {
 public:

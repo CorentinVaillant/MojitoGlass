@@ -8,11 +8,7 @@
 
 namespace mjt {
 
-// -- Forward declarations
-class VulkanBackend;
-
 class VulkanFence {
-  friend VulkanBackend;
   //== Attributs ==//
   VkDevice device                        = VK_NULL_HANDLE;
   const VkAllocationCallbacks *ptr_alloc = VK_NULL_HANDLE;
@@ -20,13 +16,21 @@ class VulkanFence {
 
   //== Contructors ==//
   NO_COPY(VulkanFence);
+
   VulkanFence(
     VkDevice device_,
-    const VkFenceCreateInfo *create_info,
-    const VkAllocationCallbacks *allocator_)
-      : device(device_), ptr_alloc(allocator_) {
+    const VkAllocationCallbacks *ptr_alloc_,
+    VkFence fence_)
+      : device(device_), ptr_alloc(ptr_alloc_), fence(fence_) {}
 
-    VK_CHECK(vkCreateFence(device, create_info, ptr_alloc, &fence));
+public:
+  static auto create(
+    VkDevice device,
+    const VkFenceCreateInfo *create_info,
+    const VkAllocationCallbacks *allocator) -> VulkanResult<VulkanFence> {
+    VkFence fence;
+    return VULKAN_RESULT(vkCreateFence(device, create_info, allocator, &fence))
+      .replace_ok(VulkanFence(device, allocator, fence));
   }
 
   VulkanFence(VulkanFence &&rval) noexcept {
@@ -42,7 +46,6 @@ class VulkanFence {
     return *this;
   }
 
-public:
   ~VulkanFence() noexcept {
     if (device) {
       vkDestroyFence(device, fence, ptr_alloc);
@@ -64,37 +67,41 @@ private:
   }
 
 public:
-  struct WaitSuccess {};
-  struct Timeout final : public IError {
-    auto to_string() const -> std::string final override {
-      return "Fence timeout";
-    }
-  };
-
   ///@brief wait for the fence to be unsignal by calling vkWaitForFences
   ///@param timeout timeout in nanoseconds
-  auto wait(uint64_t timeout) const {
-    auto result = vkWaitForFences(device, 1, &fence, VK_TRUE, timeout);
-    if (result == VK_TIMEOUT)
-      return Result<WaitSuccess, Timeout>::err({});
+  ///@return
+  /// - Ok(true) if succesfully wait
+  /// - Ok(false) if timeout
+  /// - Err(...) if an other error than `VK_TIMEOUT` is returned
+  auto wait(uint64_t timeout) const -> VulkanResult<bool> {
+    auto result =
+      VULKAN_RESULT(vkWaitForFences(device, 1, &fence, VK_TRUE, timeout));
+    if (result.is_ok())
+      return VulkanResult<bool>::ok(true);
+    else if (result.unwrap_err().get_returned_code() == VK_TIMEOUT)
+      return VulkanResult<bool>::ok(false);
     else
-      VK_CHECK(result);
-    return Result<WaitSuccess, Timeout>::ok({});
+      return VulkanResult<bool>::err(result.unwrap_err());
   }
 
-  auto signaled() const {
-    auto result = vkGetFenceStatus(device, fence);
-    if (result == VK_SUCCESS)
-      return true;
-    else if (result == VK_NOT_READY)
-      return false;
+  ///@brief return if the fence is signaled, by using vkGetFenceStatus
+  ///@return
+  /// - Ok(true) signaled
+  /// - Ok(false) if not
+  /// - Err(...) if an other error than `VK_NOT_READY` is returned
+  auto signaled() -> VulkanResult<bool> const {
+    auto result = VULKAN_RESULT(vkGetFenceStatus(device, fence));
+    if (result.is_ok())
+      return VulkanResult<bool>::ok(true);
+    else if (result.unwrap_err().get_returned_code() == VK_NOT_READY)
+      return VulkanResult<bool>::ok(false);
     else
-      VK_CHECK(result);
-
-    // Should not be returned
-    return false;
+      return VulkanResult<bool>::err(result.unwrap_err());
   }
 
-  auto reset() { VK_CHECK(vkResetFences(device, 1, &fence)); }
+  ///@brief reset the fence signaled state
+  auto reset() -> VulkanResult<> {
+    return VULKAN_RESULT(vkResetFences(device, 1, &fence));
+  }
 };
 }  // namespace mjt

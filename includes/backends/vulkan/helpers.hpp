@@ -1,5 +1,6 @@
 #pragma once
 
+#include "common.hpp"
 #define VK_NO_PROTOTYPES
 #include <volk/volk.h>
 
@@ -7,17 +8,6 @@
 #include <vulkan/vk_enum_string_helper.h>
 
 #define STD140_ALIGNEMENT 16
-
-#define VK_CHECK(x)                                                            \
-  do {                                                                         \
-    VkResult err = x;                                                          \
-                                                                               \
-    if (err) {                                                                 \
-      LOGERR(                                                                  \
-        "Detected Vulkan error: \"{}\" -> {} ", #x, string_VkResult(err));     \
-      throw std::runtime_error("VkError");                                     \
-    }                                                                          \
-  } while (0)
 
 namespace mjt {
 
@@ -70,4 +60,49 @@ struct EnumFlagsWrapper {
     return {flags | flags.flags};
   }
 };
+
+struct VulkanOk final {};
+
+class VulkanError final : public IError {
+  VkResult result;
+  const char *location = nullptr;
+
+public:
+  VulkanError(VkResult result_, const char *location_)
+      : result(result_), location(location_) {
+#ifndef NDEUBG
+    if (result == VK_SUCCESS)
+      LOGWARN("VulkanError created with a success value.");
+#endif
+  }
+
+  VulkanError(VkResult result_) : VulkanError(result_, nullptr) {}
+
+  auto to_string() const -> std::string override {
+    if (location)
+      return fmt::format(
+        "Detected Vulkan error: \"{}\" -> {} ",
+        location,
+        string_VkResult(result));
+    else
+      return fmt::format("Detected Vulkan error: {} ", string_VkResult(result));
+  }
+
+  auto get_returned_code() const & -> VkResult { return result; }
+};
+
+template <typename T = VulkanOk> using VulkanResult = Result<T, VulkanError>;
+
+[[nodiscard]]
+auto static inline make_vulkan_result(
+  VkResult result,
+  const char *location = nullptr) -> VulkanResult<> {
+  if (result == VK_SUCCESS)
+    return VulkanResult<>::ok({});
+  else
+    return VulkanResult<>::err({result, location});
+}
+
+#define VULKAN_RESULT(x) make_vulkan_result(x, #x)
+
 }  // namespace mjt

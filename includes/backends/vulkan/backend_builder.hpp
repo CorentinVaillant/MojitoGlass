@@ -71,7 +71,7 @@ public:
     using pointer           = void **;
     using reference         = void *&;
 
-    inline void              *operator*() const { return ptr; }
+    inline void *operator*() const { return ptr; }
 
     VoidPtrDeviceExtIterator &operator++() {
       if (ptr)
@@ -97,9 +97,9 @@ public:
 
 // ===== VkBackendBuilder ===== //
 struct VulkanBackendBuilder {
-  std::string app_name             = "Vk app";
-  bool        use_validation_layer = DEFAULT_VALIDATION_LAYER;
-  UVec2       minimum_version      = {1, 3};
+  std::string app_name      = "Vk app";
+  bool use_validation_layer = DEFAULT_VALIDATION_LAYER;
+  UVec2 minimum_version     = {1, 3};
   VkPhysicalDeviceVulkan11Features physical_device_Vk11_feature =
     DEFAULT_PHYSICAL_DEVICE_11_FEATURES;
   VkPhysicalDeviceVulkan12Features physical_device_Vk12_feature =
@@ -111,6 +111,6 @@ struct VulkanBackendBuilder {
 
   std::vector<const char *> extensions = DEFAULT_EXTENSIONS;
 
-  VulkanDeviceExtensions    device_extensions;
+  VulkanDeviceExtensions device_extensions;
 };
 }  // namespace mjt

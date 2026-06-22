@@ -1,6 +1,7 @@
 #pragma once
 
 #include "backends/vulkan/allocator.hpp"
+#include "backends/vulkan/fence.hpp"
 #include "backends/vulkan_backend.hpp"
 #include "common.hpp"
 #include "surface/sdl_surface.hpp"
@@ -39,7 +40,8 @@ TEST_CASE("VkBackend creation + destruction ") {
 
     AllocatorCreateFlags flags = {AllocatorCreateBit::ExternallySynchronized};
 
-    VulkanMemoryAllocator allocator = backend.create_memory_allocator(flags);
+    VulkanMemoryAllocator allocator =
+      backend.create_memory_allocator(flags).unwrap();
 
     SUBCASE("Buffer creation + destruction") {
       struct Foo {
@@ -48,13 +50,16 @@ TEST_CASE("VkBackend creation + destruction ") {
         char bar3;
       };
 
-      VulkanBuffer<Foo> buffer = allocator.create_buffer<Foo>(
-        10,
-        {VulkanBufferUsageBit::StorageBuffer,
-         VulkanBufferUsageBit::TransferSrc,
-         VulkanBufferUsageBit::TransferDst},
-        MemoryUsage::Auto,
-        {AllocationCreateBits::Mapped, AllocationCreateBits::HostAccessRandom});
+      VulkanBuffer<Foo> buffer = allocator
+                                   .create_buffer<Foo>(
+                                     10,
+                                     {VulkanBufferUsageBit::StorageBuffer,
+                                      VulkanBufferUsageBit::TransferSrc,
+                                      VulkanBufferUsageBit::TransferDst},
+                                     MemoryUsage::Auto,
+                                     {AllocationCreateBits::Mapped,
+                                      AllocationCreateBits::HostAccessRandom})
+                                   .unwrap();
 
       SUBCASE("Multiple buffers") {
         std::vector<VulkanBuffer<uint8_t>> buffers;
@@ -65,7 +70,8 @@ TEST_CASE("VkBackend creation + destruction ") {
 
         for (int i = 0; i < 10; i++) {
           buffers.emplace_back(
-            allocator.create_buffer<uint8_t>(i + 1, usage, MemoryUsage::Auto));
+            allocator.create_buffer<uint8_t>(i + 1, usage, MemoryUsage::Auto)
+              .unwrap());
         }
       }
 
@@ -90,18 +96,21 @@ TEST_CASE("VkBackend creation + destruction ") {
     }
 
     SUBCASE("Double mem allocator") {
-      VulkanMemoryAllocator allocator2 = backend.create_memory_allocator(flags);
+      VulkanMemoryAllocator allocator2 =
+        backend.create_memory_allocator(flags).unwrap();
 
       SUBCASE("Multiple allocator buffers") {
         std::vector<VulkanBuffer<uint8_t>> buffers;
         VulkanBufferUsage usage{VulkanBufferUsageBit::StorageBuffer};
         for (int i = 0; i < 5; i++) {
           buffers.emplace_back(
-            allocator.create_buffer<uint8_t>(i + 1, usage, MemoryUsage::Auto));
+            allocator.create_buffer<uint8_t>(i + 1, usage, MemoryUsage::Auto)
+              .unwrap());
         }
         for (int i = 0; i < 5; i++) {
           buffers.emplace_back(
-            allocator2.create_buffer<uint8_t>(i + 1, usage, MemoryUsage::Auto));
+            allocator2.create_buffer<uint8_t>(i + 1, usage, MemoryUsage::Auto)
+              .unwrap());
         }
       }
     }
@@ -109,24 +118,24 @@ TEST_CASE("VkBackend creation + destruction ") {
 
   SUBCASE("Fence creation + destruction") {
 
-    auto fence = backend.create_fence();
+    VulkanFence fence = backend.create_fence().unwrap();
 
     SUBCASE("Fence creation + destruction 2") {
-      auto fence2 = backend.create_fence(true);
+      VulkanFence fence2 = backend.create_fence(true).unwrap();
 
       SUBCASE("Wait for fences") {
-        CHECK(fence.wait(1'000'000).is_err());
-        CHECK(fence2.wait(1'000'000).is_ok());
+        CHECK(fence.wait(1'000'000).unwrap() == false);
+        CHECK(fence2.wait(1'000'000).unwrap() == true);
       }
 
       SUBCASE("Check signaled") {
-        CHECK(fence.signaled() == false);
-        CHECK(fence2.signaled() == true);
+        CHECK(fence.signaled().unwrap() == false);
+        CHECK(fence2.signaled().unwrap() == true);
       }
 
-      SUBCASE("Fence reset"){
+      SUBCASE("Fence reset") {
         fence2.reset();
-        CHECK(fence2.signaled() == false);
+        CHECK(fence2.signaled().unwrap() == false);
       }
     }
   }

@@ -81,28 +81,51 @@ using AllocationCreateFlags =
 class VulkanMemoryAllocator;
 
 // Buffer
+
+///@brief Wrapper for a VkBuffer.
+///@important `T` must be a trivially copyable type
 template <GpuUploadable T> class VulkanBuffer {
-  friend VulkanMemoryAllocator;
   // == Attributs == //
 
-  VmaAllocator      allocator  = VK_NULL_HANDLE;
-  VkBuffer          buffer     = VK_NULL_HANDLE;
-  VmaAllocation     allocation = VK_NULL_HANDLE;
+  VmaAllocator allocator       = VK_NULL_HANDLE;
+  VkBuffer buffer              = VK_NULL_HANDLE;
+  VmaAllocation allocation     = VK_NULL_HANDLE;
   VmaAllocationInfo alloc_info = {};
-  size_t            count;
+  size_t count;
 
   // == Constructors == //
   VulkanBuffer(
-    VmaAllocator      allocator_,
-    VkBuffer          buf,
-    VmaAllocation     alloc,
+    VmaAllocator allocator_,
+    VkBuffer buf,
+    VmaAllocation alloc,
     VmaAllocationInfo allocation_info,
-    size_t            n)
+    size_t n)
       : allocator(allocator_), buffer(buf), allocation(alloc),
         alloc_info(allocation_info), count(n) {}
 
 public:
   NO_COPY(VulkanBuffer);
+
+  static auto create(
+    VmaAllocator allocator,
+    const VkBufferCreateInfo *ptr_buffer_info,
+    const VmaAllocationCreateInfo *ptr_alloc_create_info,
+    size_t count) -> VulkanResult<VulkanBuffer> {
+    VkBuffer buffer;
+    VmaAllocation allocation;
+    VmaAllocationInfo allocation_info;
+
+    return VULKAN_RESULT(vmaCreateBuffer(
+                           allocator,
+                           ptr_buffer_info,
+                           ptr_alloc_create_info,
+                           &buffer,
+                           &allocation,
+                           &allocation_info))
+      .replace_ok(
+        VulkanBuffer(allocator, buffer, allocation, allocation_info, count));
+  }
+
   VulkanBuffer(VulkanBuffer &&rval) noexcept {
     copy(rval);
     rval.nullify();
@@ -144,6 +167,9 @@ private:
   }
 
 public:
+  ///@brief write from CPU memory to the buffer.
+  ///@important if not created with AllocationCreateBits::Mapped and
+  /// VulkanBufferUsageBit::TransferDst, will fail and crash.
   auto write(size_t dst_offset, std::span<const T> src) -> void {
     ASSERT_ERR(allocator != VK_NULL_HANDLE, "write on a destroyed buffer.");
     ASSERT_ERR(
@@ -155,20 +181,31 @@ public:
       reinterpret_cast<const uint8_t *>(src.data()),
       std::min((count - dst_offset) * sizeof(T), src.size_bytes()));
   }
-
+  ///@brief write from CPU memory to the buffer.
+  ///@important if not created with AllocationCreateBits::Mapped and
+  /// VulkanBufferUsageBit::TransferDst, will fail and crash.
   inline auto write(size_t dst_offset, size_t src_count, const T *src) {
     write(dst_offset, {src, src_count});
   }
+  ///@brief write from CPU memory to the buffer.
+  ///@important if not created with AllocationCreateBits::Mapped and
+  /// VulkanBufferUsageBit::TransferDst, will fail and crash.
   inline auto write(std::span<const T> src) { write(0, src); }
 
-  auto        flush() -> void {
-    VK_CHECK(vmaFlushAllocation(allocator, allocation, 0, alloc_info.size));
+  ///@brief flush the memory using vmaFlushAllocation.
+  auto flush() -> VulkanResult<> {
+    return VULKAN_RESULT(
+      vmaFlushAllocation(allocator, allocation, 0, alloc_info.size));
   }
-  auto invalidate() -> void {
-    VK_CHECK(
+  ///@brief invalidate the memory using vmaInvalidateAllocation.
+  auto invalidate() -> VulkanResult<> {
+    return VULKAN_RESULT(
       vmaInvalidateAllocation(allocator, allocation, 0, alloc_info.size));
   }
 
+  ///@brief read from the buffer to the CPU memory.
+  ///@important if not created with AllocationCreateBits::Mapped and
+  /// VulkanBufferUsageBit::TransferSrc, will fail and crash.
   auto read(size_t src_offset, std::span<T> dst) -> void {
     ASSERT_ERR(allocator != VK_NULL_HANDLE, "read on a destroyed buffer.");
     ASSERT_ERR(
@@ -181,26 +218,37 @@ public:
       std::min((count - src_offset) * sizeof(T), dst.size_bytes()));
   }
 
+  ///@brief read from the buffer to the CPU memory.
+  ///@important if not created with AllocationCreateBits::Mapped and
+  /// VulkanBufferUsageBit::TransferSrc, will fail and crash.
   inline auto read(size_t src_offset, size_t dst_count, T *dst) {
     read(src_offset, {dst, dst_count});
   }
+  ///@brief read from the buffer to the CPU memory.
+  ///@important if not created with AllocationCreateBits::Mapped and
+  /// VulkanBufferUsageBit::TransferSrc, will fail and crash.
   inline auto read(std::span<T> dst) { read(0, dst); }
 };
 
 // ===== VulkanMemoryAllocator =====
-class VulkanMemoryAllocator {
-  friend VulkanBackend;
 
+///@brief Wrapper for a vulkan memory allocator
+class VulkanMemoryAllocator {
   // == Attributs == //
   VmaAllocator allocator = VK_NULL_HANDLE;
 
   // == Constructors == //
   VulkanMemoryAllocator() = delete;
-  VulkanMemoryAllocator(VmaAllocatorCreateInfo &infos) {
-    VK_CHECK(vmaCreateAllocator(&infos, &allocator));
-  }
+  VulkanMemoryAllocator(VmaAllocator allocator_) : allocator(allocator_) {}
 
 public:
+  static auto create(VmaAllocatorCreateInfo &infos)
+    -> Result<VulkanMemoryAllocator, VulkanError> {
+    VmaAllocator allocator;
+    return VULKAN_RESULT(vmaCreateAllocator(&infos, &allocator))
+      .replace_ok(VulkanMemoryAllocator(allocator));
+  }
+
   VulkanMemoryAllocator(VulkanMemoryAllocator &&rval) noexcept {
     this->allocator = rval.allocator;
     rval.nullify();
@@ -225,14 +273,21 @@ private:
 
   // == Methods ==
 public:
+  ///@brief create a `VulkanBuffer<T>`
+  ///@param[in] count : the number of ellement of type `T` to be in the buffer
+  ///@param[in] usage : vulkan buffer usage
+  ///@param[in] mem_usage : VMA memory usage
+  ///@param[in] alloc_create_flag : creation flag for the allocation
+  ///@param[in] sharing_mode_queues : to put if the buffer is shared accros
+  /// multiple thread, with each queue being in each thread
   template <GpuUploadable T>
   auto create_buffer(
-    size_t                count,
-    VulkanBufferUsage     usage,
-    MemoryUsage           mem_usage         = MemoryUsage::AutoPreferDevice,
+    size_t count,
+    VulkanBufferUsage usage,
+    MemoryUsage mem_usage                   = MemoryUsage::AutoPreferDevice,
     AllocationCreateFlags alloc_create_flag = {},
     std::optional<std::span<uint32_t>> sharing_mode_queues = std::nullopt)
-    -> VulkanBuffer<T> {
+    -> VulkanResult<VulkanBuffer<T>> {
 
     VkBufferCreateInfo buffer_info{
       .sType       = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
@@ -263,19 +318,8 @@ public:
       .priority       = 0,
     };
 
-    VkBuffer          buffer;
-    VmaAllocation     allocation;
-    VmaAllocationInfo allocation_info;
-    VK_CHECK(vmaCreateBuffer(
-      allocator,
-      &buffer_info,
-      &alloc_create_info,
-      &buffer,
-      &allocation,
-      &allocation_info));
-
-    return VulkanBuffer<T>(
-      allocator, buffer, allocation, allocation_info, count);
+    return VulkanBuffer<T>::create(
+      allocator, &buffer_info, &alloc_create_info, count);
   }
 };
 

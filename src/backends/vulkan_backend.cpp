@@ -11,14 +11,16 @@ namespace mjt {
 auto VulkanBackend::create(VulkanBackendBuilder &builder, IVkSurface &surface)
   -> Result<VulkanBackend, BackendCreationError> {
 
+  using Ret = Result<VulkanBackend, BackendCreationError>;
+
   VulkanBackend result{};
 
   auto error = result.init(builder, surface);
 
   if (error)
-    return Result<VulkanBackend, BackendCreationError>::err(error.value());
+    return Ret::err(error.value());
   else
-    return Result<VulkanBackend, BackendCreationError>::ok(std::move(result));
+    return Ret::ok(std::move(result));
 }
 
 static bool volk_init = false;
@@ -29,7 +31,10 @@ auto VulkanBackend::init(
   LOG(INFO, "Init VkBackend");
 
   if (!volk_init) {
-    VK_CHECK(volkInitialize());
+    auto result = VULKAN_RESULT(volkInitialize());
+    if (result.is_err())
+      return {BackendCreationError::create_volk_initialization_error(
+        std::move(result.unwrap_err()))};
     volk_init = true;
   }
 
@@ -173,7 +178,7 @@ VulkanBackend::~VulkanBackend() noexcept {
 // -- Memory allocator
 
 auto VulkanBackend::create_memory_allocator(AllocatorCreateFlags flags) const
-  -> VulkanMemoryAllocator {
+  -> VulkanResult<VulkanMemoryAllocator> {
   VmaAllocatorCreateInfo alloc_info{};
 
   alloc_info.flags                = flags.flags;
@@ -184,18 +189,18 @@ auto VulkanBackend::create_memory_allocator(AllocatorCreateFlags flags) const
   alloc_info.vulkanApiVersion     = api_version;
   alloc_info.pVulkanFunctions     = &vma_functions;
 
-  return VulkanMemoryAllocator(alloc_info);
+  return VulkanMemoryAllocator::create(alloc_info);
 }
 
 // -- Fence
 
-auto VulkanBackend::create_fence(bool signaled) const -> VulkanFence {
+auto VulkanBackend::create_fence(bool signaled) const -> VulkanResult<VulkanFence> {
   VkFenceCreateInfo create_info{
     .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
     .pNext = nullptr,
     .flags = signaled ? VK_FENCE_CREATE_SIGNALED_BIT : 0x0u,
   };
 
-  return VulkanFence(device, &create_info, allocator);
+  return VulkanFence::create(device, &create_info, allocator);
 }
 }  // namespace mjt

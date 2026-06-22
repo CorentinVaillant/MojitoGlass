@@ -1,9 +1,8 @@
 #pragma once
 
+#include "backends/vulkan/helpers.hpp"
 #include "common.hpp"
 #include "surface.hpp"
-
-
 
 namespace mjt {
 
@@ -18,10 +17,12 @@ struct BackendCreationError : public IError {
     vulkan_failed_to_load_instance,  // Stored in variant 0
     vulkan_failed_to_select_device,  // Stored in variant 0
     vulkan_failed_to_build_device,   // Stored in variant 0
-    surface_creation_error           // Stored in variant 1
+    surface_creation_error,          // Stored in variant 1
+    volk_initialization_error,       // Stored in variant 2
   };
 
-  using InnerVariant = std::variant<std::error_code, VkSurfaceError>;
+  using InnerVariant =
+    std::variant<std::error_code, VkSurfaceError, VulkanError>;
 
   BackendCreationError(ErrorType type_in, InnerVariant err_in)
       : type(type_in), error(err_in) {}
@@ -39,6 +40,7 @@ struct BackendCreationError : public IError {
     vulkan_failed_to_build_device,
     std::error_code);
   CREATE_BACK_CREATION_ERROR_CONSTR(surface_creation_error, VkSurfaceError);
+  CREATE_BACK_CREATION_ERROR_CONSTR(volk_initialization_error, VulkanError);
 
   auto to_string() const -> std::string override final {
 
@@ -63,6 +65,8 @@ struct BackendCreationError : public IError {
 
       case ErrorType::surface_creation_error:
         return std::get<1>(error).to_string();
+      case ErrorType::volk_initialization_error:
+        return std::get<2>(error).to_string();
     }
   }
 };

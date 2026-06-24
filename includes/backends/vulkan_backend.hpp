@@ -1,10 +1,13 @@
 #pragma once
 
+#include "backends/vulkan/command_pool.hpp"
 #include "backends/vulkan/fence.hpp"
 #include "backends/vulkan/helpers.hpp"
+#include "backends/vulkan/queue.hpp"
 #define VK_NO_PROTOTYPES
 #include <volk/volk.h>
 
+#include "./backends/vulkan/helpers.hpp"
 #include "./vulkan/vma_usages.hpp"
 #include "backends.hpp"
 #include "backends/vulkan/allocator.hpp"
@@ -35,6 +38,8 @@ class VulkanBackend {
 
   VmaVulkanFunctions vma_functions                      = {};
 
+  std::unique_ptr<VulkanQueuePool> pool                 = nullptr;
+
   // == Constructors == //
   VulkanBackend() = default;
   NO_COPY(VulkanBackend);
@@ -51,11 +56,21 @@ public:
 private:
   auto init(VulkanBackendBuilder &builder, IVkSurface &surface)
     -> std::optional<BackendCreationError>;
+
+  // tuple : (index, count, properties)
+  auto init_queue_pool(
+    std::span<std::tuple<uint32_t, uint32_t, VkQueueFamilyProperties>>
+      queue_families_props) -> VulkanResult<>;
   auto copy(const VulkanBackend &other) noexcept -> void;
+  auto move(VulkanBackend &other) noexcept -> void;
 
 public:
   static auto create(VulkanBackendBuilder &builder, IVkSurface &surface)
     -> Result<VulkanBackend, BackendCreationError>;
+
+  // -- Queue pool
+  auto queue_pool() -> VulkanQueuePool & { return *pool; }
+  auto queue_pool() const -> const VulkanQueuePool & { return *pool; }
 
   // -- Memory allocator
   auto create_memory_allocator(AllocatorCreateFlags flags) const
@@ -63,6 +78,10 @@ public:
 
   // -- Fence
   auto create_fence(bool signaled = false) const -> VulkanResult<VulkanFence>;
+
+  // -- CmdPool
+  auto create_cmd_pool(CmdPoolCreateFlags create_flags) const
+    -> VulkanResult<VulkanCmdPool>;
 };
 
 }  // namespace mjt

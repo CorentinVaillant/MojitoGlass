@@ -1,11 +1,11 @@
 #pragma once
 
-#include "common.hpp"
 #define VK_NO_PROTOTYPES
 #include <volk/volk.h>
-
-#include "math/vec4.hpp"
 #include <vulkan/vk_enum_string_helper.h>
+
+#include "common.hpp"
+#include "math/vec4.hpp"
 
 #define STD140_ALIGNEMENT 16
 
@@ -60,6 +60,41 @@ struct EnumFlagsWrapper {
     return {flags | flags.flags};
   }
 };
+
+enum class VulkanPipelineStage : uint64_t {
+  None         = VK_PIPELINE_STAGE_2_NONE,
+  TopOfPipe    = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
+  DrawIndirect = VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT,
+  VertexInput  = VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT,
+  VertexShader = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT,
+  TessellationControlShader =
+    VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT,
+  TessellationEvaluationShader =
+    VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT,
+  GeometryShader          = VK_PIPELINE_STAGE_2_GEOMETRY_SHADER_BIT,
+  FragmentShader          = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+  EarlyFragmentTests      = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT,
+  LateFragmentTests       = VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+  ColorAttachmentOutput   = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+  ComputeShader           = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+  AllTransfer             = VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,
+  Transfer                = VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+  BottomOfPipe            = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT,
+  Host                    = VK_PIPELINE_STAGE_2_HOST_BIT,
+  AllGraphics             = VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
+  AllCommands             = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+  Copy                    = VK_PIPELINE_STAGE_2_COPY_BIT,
+  Resolve                 = VK_PIPELINE_STAGE_2_RESOLVE_BIT,
+  Blit                    = VK_PIPELINE_STAGE_2_BLIT_BIT,
+  Clear                   = VK_PIPELINE_STAGE_2_CLEAR_BIT,
+  IndexInput              = VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT,
+  VertexAttributeInput    = VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT,
+  PreRasterizationShaders = VK_PIPELINE_STAGE_2_PRE_RASTERIZATION_SHADERS_BIT,
+
+};
+
+using VulkanPipelineStages =
+  EnumFlagsWrapper<VkPipelineStageFlags2, VulkanPipelineStage>;
 
 struct VulkanOk final {};
 

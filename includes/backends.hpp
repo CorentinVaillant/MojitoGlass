@@ -13,16 +13,18 @@ namespace mjt {
   }
 
 struct BackendCreationError : public IError {
+  struct NoInnerErrorVariant {};
   enum class ErrorType {
     vulkan_failed_to_load_instance,  // Stored in variant 0
     vulkan_failed_to_select_device,  // Stored in variant 0
     vulkan_failed_to_build_device,   // Stored in variant 0
     surface_creation_error,          // Stored in variant 1
     volk_initialization_error,       // Stored in variant 2
+    vulkan_no_queue_available,       // Stored in variant 3
   };
 
-  using InnerVariant =
-    std::variant<std::error_code, VkSurfaceError, VulkanError>;
+  using InnerVariant = std::
+    variant<std::error_code, VkSurfaceError, VulkanError, NoInnerErrorVariant>;
 
   BackendCreationError(ErrorType type_in, InnerVariant err_in)
       : type(type_in), error(err_in) {}
@@ -41,6 +43,9 @@ struct BackendCreationError : public IError {
     std::error_code);
   CREATE_BACK_CREATION_ERROR_CONSTR(surface_creation_error, VkSurfaceError);
   CREATE_BACK_CREATION_ERROR_CONSTR(volk_initialization_error, VulkanError);
+  CREATE_BACK_CREATION_ERROR_CONSTR(
+    vulkan_no_queue_available,
+    NoInnerErrorVariant);
 
   auto to_string() const -> std::string override final {
 
@@ -67,6 +72,8 @@ struct BackendCreationError : public IError {
         return std::get<1>(error).to_string();
       case ErrorType::volk_initialization_error:
         return std::get<2>(error).to_string();
+      case ErrorType::vulkan_no_queue_available:
+        return "Vulkan, failed to find available queues.";
     }
   }
 };

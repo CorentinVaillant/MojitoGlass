@@ -3,8 +3,11 @@
 #include "VkBootstrap.h"
 #include "backends.hpp"
 #include "backends/vulkan/allocator.hpp"
+#include "backends/vulkan/backend_builder.hpp"
+#include "backends/vulkan/command_pool.hpp"
 #include "backends/vulkan/fence.hpp"
 #include "backends/vulkan/helpers.hpp"
+#include "backends/vulkan/queue.hpp"
 
 namespace mjt {
 
@@ -106,12 +109,46 @@ auto VulkanBackend::init(
   for (void *device_extension : builder.device_extensions)
     device_builder.add_pNext(device_extension);
 
-  auto device_ret = device_builder.build();
+  std::vector<vkb::CustomQueueDescription> queue_descs;
+  // tuple : (index, count, properties)
+  std::vector<std::tuple<uint32_t, uint32_t, VkQueueFamilyProperties>>
+    queue_families_props;
+
+  auto queue_families = selector_ret->get_queue_families();
+
+  for (uint32_t i = 0; i < queue_families.size(); i++) {
+    uint32_t total_count = 0;
+
+    for (auto &queue_request : builder.queue_request) {
+      if (
+        queue_families[i].queueFlags & queue_request.capabilities.flags.flags) {
+        uint32_t count = std::min(
+          queue_request.count, queue_families[i].queueCount - total_count);
+        if (count == 0)
+          continue;
+
+        total_count += count;
+      }
+    }
+
+    if (total_count > 0) {
+      queue_descs.emplace_back(i, std::vector<float>(total_count, 1.0f));
+      queue_families_props.emplace_back(i, total_count, queue_families[i]);
+    }
+  }
+
+  if (queue_descs.empty())
+    return {BackendCreationError::create_vulkan_no_queue_available({})};
+
+  auto device_ret = device_builder.custom_queue_setup(queue_descs).build();
   if (!device_ret)
     return {BackendCreationError::create_vulkan_failed_to_build_device(
       device_ret.error())};
   device = device_ret->device;
   // volkLoadDevice(device);
+
+  //! TODO > Return if err
+  init_queue_pool(queue_families_props).unwrap();
 
   vma_functions.vkGetInstanceProcAddr = vkGetInstanceProcAddr;
   vma_functions.vkGetDeviceProcAddr   = vkGetDeviceProcAddr;
@@ -120,8 +157,60 @@ auto VulkanBackend::init(
   return {};
 }
 
-auto VulkanBackend::copy(const VulkanBackend &other) noexcept -> void {
+auto VulkanBackend::init_queue_pool(
+  // tuple : (index, count, properties)
+  std::span<std::tuple<uint32_t, uint32_t, VkQueueFamilyProperties>>
+    queue_families_props) -> VulkanResult<> {
 
+  using Ret = VulkanResult<>;
+#define RET_IF_ERR(x)                                                          \
+  do {                                                                         \
+    auto res_RET_IF_ERR = VULKAN_RESULT(x);                                    \
+    if (res_RET_IF_ERR.is_err())                                               \
+      return Ret::err(res_RET_IF_ERR.unwrap_err());                            \
+  } while (0)
+
+  std::vector<QueueFamily> families;
+  families.reserve(queue_families_props.size());
+
+  // Building the families
+  for (auto [fam_idx, count, prop] : queue_families_props) {
+
+    VkBool32 suport_present;
+    RET_IF_ERR(vkGetPhysicalDeviceSurfaceSupportKHR(
+      physical_device, fam_idx, surface, &suport_present));
+
+    QueueFamily family{};
+    family.family_index             = fam_idx;
+    family.capabilities.flags.flags = static_cast<uint32_t>(prop.queueFlags);
+    family.capabilities.present     = suport_present == VK_TRUE;
+    family.queues.reserve(count);
+
+    // Building the family's queues
+    for (uint32_t i = 0; i < count; i++) {
+      VkQueue vk_queue = VK_NULL_HANDLE;
+      vkGetDeviceQueue(device, fam_idx, i, &vk_queue);
+
+      if (vk_queue == VK_NULL_HANDLE) {
+        LOGWARN("Failed to get queue[{}] from family[{}]", i, fam_idx);
+        continue;
+      };
+      family.queues.emplace_back(
+        VulkanQueue(vk_queue, fam_idx, family.capabilities));
+    }
+
+    if (!family.queues.empty())
+      families.emplace_back(std::move(family));
+  }
+
+  pool =
+    std::make_unique<VulkanQueuePool>(VulkanQueuePool(std::move(families)));
+
+  return Ret::ok({});
+#undef RET_IF_ERR
+}
+
+auto VulkanBackend::copy(const VulkanBackend &other) noexcept -> void {
   nulled                     = other.nulled;
   instance                   = other.instance;
   debug_messenger            = other.debug_messenger;
@@ -133,14 +222,20 @@ auto VulkanBackend::copy(const VulkanBackend &other) noexcept -> void {
   vma_functions              = other.vma_functions;
 }
 
+auto VulkanBackend::move(VulkanBackend &other) noexcept -> void {
+  pool = std::move(other.pool);
+}
+
 VulkanBackend::VulkanBackend(VulkanBackend &&rval) noexcept {
   copy(rval);
+  move(rval);
   rval.nullify();
 }
 auto VulkanBackend::operator=(VulkanBackend &&rval) noexcept
   -> VulkanBackend & {
   if (this != &rval) {
     copy(rval);
+    move(rval);
 
     rval.nullify();
   }
@@ -156,6 +251,7 @@ auto VulkanBackend::nullify() noexcept -> void {
   physical_device            = VK_NULL_HANDLE;
   physical_device_properties = {};
   device                     = VK_NULL_HANDLE;
+  pool                       = nullptr;
 }
 VulkanBackend::~VulkanBackend() noexcept {
   if (nulled)
@@ -194,7 +290,8 @@ auto VulkanBackend::create_memory_allocator(AllocatorCreateFlags flags) const
 
 // -- Fence
 
-auto VulkanBackend::create_fence(bool signaled) const -> VulkanResult<VulkanFence> {
+auto VulkanBackend::create_fence(bool signaled) const
+  -> VulkanResult<VulkanFence> {
   VkFenceCreateInfo create_info{
     .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
     .pNext = nullptr,
@@ -203,4 +300,19 @@ auto VulkanBackend::create_fence(bool signaled) const -> VulkanResult<VulkanFenc
 
   return VulkanFence::create(device, &create_info, allocator);
 }
+
+// -- CmdPool
+auto VulkanBackend::create_cmd_pool(CmdPoolCreateFlags create_flags) const
+  -> VulkanResult<VulkanCmdPool> {
+
+  VkCommandPoolCreateInfo create_info{
+    .sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+    .pNext            = nullptr,
+    .flags            = create_flags.flags,
+    .queueFamilyIndex = 0,  // ~
+  };
+
+  return VulkanCmdPool::create(device, allocator, &create_info);
+}
+
 }  // namespace mjt

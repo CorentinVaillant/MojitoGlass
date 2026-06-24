@@ -1,16 +1,13 @@
 #pragma once
 
 // std includes :
-#include "ansi_char.hpp"
-
-#include <concepts>
-#include <fmt/base.h>
-#include <fmt/core.h>
-#include <fmt/format.h>
-
 #include <array>
+#include <concepts>
+#include <condition_variable>
 #include <functional>
 #include <initializer_list>
+#include <memory>
+#include <mutex>
 #include <new>
 #include <optional>
 #include <span>
@@ -20,6 +17,12 @@
 #include <type_traits>
 #include <utility>
 #include <variant>
+//fmt includes
+#include <fmt/base.h>
+#include <fmt/core.h>
+#include <fmt/format.h>
+
+#include "ansi_char.hpp"
 
 namespace mjt {
 
@@ -104,7 +107,7 @@ constexpr bool THROW_ON_MACRO_ERR = true;
 #ifndef NDEBUG
 #define ON_DEBUG(x) x
 #else
-ON_DEBUG(x)
+#define ON_DEBUG(x)
 #endif
 
 //========== Class Decl Helper  ==========//
@@ -232,8 +235,7 @@ public:
     return R::ok(val);
   }
 
-  template <typename S>
-  auto replace_ok(S &&val) const & -> Result<S, E> {
+  template <typename S> auto replace_ok(S &&val) const & -> Result<S, E> {
     using R = Result<S, E>;
     if (!has_value) {
       return R::err(unex);
@@ -251,7 +253,6 @@ private:
       throw std::runtime_error("unwrap_err() on Ok");
   }
 };
-
 
 class IError {
 public:

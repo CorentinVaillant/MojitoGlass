@@ -11,9 +11,6 @@
 
 namespace mjt {
 
-// Forward declarations :
-class VulkanBackend;
-
 // ===== Flags =====
 enum class AllocatorCreateBit : uint32_t {
   ExternallySynchronized  = VMA_ALLOCATOR_CREATE_EXTERNALLY_SYNCHRONIZED_BIT,

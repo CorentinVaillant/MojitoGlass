@@ -1,7 +1,10 @@
 #pragma once
 
 #include "backends/vulkan/allocator.hpp"
+#include "backends/vulkan/command_buffer.hpp"
+#include "backends/vulkan/command_pool.hpp"
 #include "backends/vulkan/fence.hpp"
+#include "backends/vulkan/queue.hpp"
 #include "backends/vulkan_backend.hpp"
 #include "common.hpp"
 #include "surface/sdl_surface.hpp"
@@ -11,7 +14,7 @@
 
 using namespace mjt;
 
-TEST_CASE("VkBackend creation + destruction ") {
+TEST_CASE("VkBackend") {
   SdlSurfaceParams params = SdlSurfaceParams::create_vulkan_presset("test_app");
 
   auto surface            = SdlSurface::create(params).unwrap();
@@ -34,6 +37,14 @@ TEST_CASE("VkBackend creation + destruction ") {
       "Error while creating vulkan backend got : \n\t",
       backend_result2.unwrap_err().to_string());
     VulkanBackend backend2 = std::move(backend_result2.unwrap());
+  }
+
+  SUBCASE("Queue") {
+    auto handle = backend.queue_pool().acquire(VulkanQueueFlagBit::Graphics, true);
+    CHECK(handle);
+
+    auto &h = (handle.value());
+    CHECK(h->wait_idle());
   }
 
   SUBCASE("Mem Allocator creation + destruction") {

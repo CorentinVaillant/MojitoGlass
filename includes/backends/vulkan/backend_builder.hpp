@@ -1,6 +1,7 @@
 #pragma once
 
 #include "./default_values.hpp"
+#include "backends/vulkan/queue.hpp"
 #include "math/vec2.hpp"
 
 namespace mjt {
@@ -12,7 +13,7 @@ constexpr bool DEFAULT_VALIDATION_LAYER =
   false;
 #endif
 
-// ===== DeviceExtensions ===== //
+//===== DeviceExtensions =====//
 struct VulkanDeviceExtensions {
 
   VkPhysicalDeviceAccelerationStructureFeaturesKHR acc_struct_features{
@@ -95,7 +96,12 @@ public:
   VoidPtrDeviceExtIterator end() { return VoidPtrDeviceExtIterator(nullptr); }
 };
 
-// ===== VkBackendBuilder ===== //
+//===== VulkanQueueRequest =====//
+struct VulkanQueueRequest {
+  QueueCapabilities capabilities;
+  uint32_t count = 1;
+};
+//===== VkBackendBuilder =====//
 struct VulkanBackendBuilder {
   std::string app_name      = "Vk app";
   bool use_validation_layer = DEFAULT_VALIDATION_LAYER;
@@ -112,5 +118,9 @@ struct VulkanBackendBuilder {
   std::vector<const char *> extensions = DEFAULT_EXTENSIONS;
 
   VulkanDeviceExtensions device_extensions;
+
+  std::vector<VulkanQueueRequest> queue_request = {
+    {{VulkanQueueFlagBit::Graphics, true}, 1},
+    {{VulkanQueueFlagBit::Transfer, false}, 1}};
 };
 }  // namespace mjt

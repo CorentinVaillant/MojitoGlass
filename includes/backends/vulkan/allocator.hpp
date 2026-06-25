@@ -2,7 +2,6 @@
 
 #include "backends/vulkan/helpers.hpp"
 
-#include <vulkan/vulkan_core.h>
 #define VK_NO_PROTOTYPES
 #include "common.hpp"
 #include "vma_usages.hpp"

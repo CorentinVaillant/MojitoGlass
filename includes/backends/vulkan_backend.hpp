@@ -4,6 +4,7 @@
 #include "backends/vulkan/fence.hpp"
 #include "backends/vulkan/helpers.hpp"
 #include "backends/vulkan/queue.hpp"
+#include "backends/vulkan/semaphore.hpp"
 #define VK_NO_PROTOTYPES
 #include <volk/volk.h>
 
@@ -79,6 +80,7 @@ public:
   // -- Fence
   auto create_fence(bool signaled = false) const -> VulkanResult<VulkanFence>;
 
+  // -- Cmd
   auto create_imediate_cmd(VulkanCmdPool &pool) -> VulkanResult<ImediateCmd> {
     auto fence_ret = create_fence();
     if (!fence_ret)
@@ -89,6 +91,15 @@ public:
 
     return VulkanResult<ImediateCmd>::ok(
       ImediateCmd(std::move(cmd_ret.unwrap()), std::move(fence_ret.unwrap())));
+  }
+
+  // -- Semaphore
+  auto create_binary_semaphore() -> VulkanResult<VulkanBinarySemaphore> {
+    return VulkanBinarySemaphore::create(device, allocator);
+  }
+  auto create_timeline_semaphore(uint64_t initial_value)
+    -> VulkanResult<VulkanTimelineSemaphore> {
+    return VulkanTimelineSemaphore::create(device, allocator, initial_value);
   }
 };
 

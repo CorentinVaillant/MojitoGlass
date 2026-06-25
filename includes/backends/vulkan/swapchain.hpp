@@ -8,6 +8,7 @@
 
 namespace mjt {
 
+// TODO
 class VulkanSwapchain {
   //== Attributs ==//
   VkSwapchainKHR swapchain = VK_NULL_HANDLE;

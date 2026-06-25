@@ -8,7 +8,6 @@
 #include "backends/vulkan/helpers.hpp"
 #include "backends/vulkan/queue.hpp"
 #include "common.hpp"
-#include <vulkan/vulkan_core.h>
 
 namespace mjt {
 

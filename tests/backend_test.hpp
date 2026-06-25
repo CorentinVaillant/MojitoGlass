@@ -5,6 +5,7 @@
 #include "backends/vulkan/command_pool.hpp"
 #include "backends/vulkan/fence.hpp"
 #include "backends/vulkan/queue.hpp"
+#include "backends/vulkan/semaphore.hpp"
 #include "backends/vulkan_backend.hpp"
 #include "common.hpp"
 #include "surface/sdl_surface.hpp"
@@ -143,6 +144,35 @@ TEST_CASE("VkBackend") {
     }
   }
 
+  SUBCASE("Semaphore") {
+    SUBCASE("Binary semaphore") {
+      VulkanBinarySemaphore semaphore =
+        backend.create_binary_semaphore().unwrap();
+
+      CHECK(semaphore.raw() != VK_NULL_HANDLE);
+    }
+
+    SUBCASE("Timeline Semaphore") {
+      VulkanTimelineSemaphore semaphore =
+        backend.create_timeline_semaphore(5u).unwrap();
+
+      CHECK(semaphore.query_value().unwrap() == 5);
+
+      constexpr uint64_t WAIT_TIME = 1'000'000;
+
+      CHECK(semaphore.wait(5, WAIT_TIME).unwrap() == true);
+      CHECK(semaphore.wait(10, WAIT_TIME).unwrap() == false);
+      CHECK(semaphore.wait(100, WAIT_TIME).unwrap() == false);
+
+      semaphore.signal(10);
+      CHECK(semaphore.query_value().unwrap() == 10);
+
+      CHECK(semaphore.wait(5, WAIT_TIME).unwrap() == true);
+      CHECK(semaphore.wait(10, WAIT_TIME).unwrap() == true);
+      CHECK(semaphore.wait(100, WAIT_TIME).unwrap() == false);
+    }
+  }
+
   SUBCASE("Queue") {
     auto handle_ret =
       backend.queue_pool().acquire(VulkanQueueFlagBit::Graphics, true);
@@ -190,5 +220,4 @@ TEST_CASE("VkBackend") {
       }
     }
   }
-
 }

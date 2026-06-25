@@ -50,12 +50,13 @@ auto VulkanQueue::present(
 
   // VkResult *results                  = new VkResult[SWAPCHAIN_COUNT];
   VkResult result;
-  VkResult *results = &result;
+  VkResult *results          = &result;
+  VkSemaphore wait_semaphore = semaphore ? semaphore->raw() : VK_NULL_HANDLE;
   VkPresentInfoKHR info{
     .sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
     .pNext              = nullptr,
     .waitSemaphoreCount = semaphore ? 1u : 0u,
-    .pWaitSemaphores    = semaphore ? &semaphore->raw() : nullptr,
+    .pWaitSemaphores    = semaphore ? &wait_semaphore : nullptr,
     .swapchainCount     = 1,
     .pSwapchains        = &swapchain.raw(),
     .pImageIndices      = &image_index,

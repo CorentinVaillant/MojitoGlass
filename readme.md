@@ -20,6 +20,6 @@ You will find a test executable inside the `bin` folder.
 
 [ ] VulkanBackend:
 - [X] Queue
-- [ ] Semaphores
+- [X] Semaphores
 - [ ] Swapchains
 

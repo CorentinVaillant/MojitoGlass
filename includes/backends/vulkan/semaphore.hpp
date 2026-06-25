@@ -2,19 +2,76 @@
 
 #include "common.hpp"
 #include "helpers.hpp"
+#include <vulkan/vulkan_core.h>
 
 namespace mjt {
 
+// TODO
 class VulkanSemaphore {
+protected:
   //== Attributs ==//
+  VkDevice device                                  = VK_NULL_HANDLE;
+  const VkAllocationCallbacks *allocator_callbacks = nullptr;
+  VkSemaphore semaphore                            = VK_NULL_HANDLE;
 
-  VkSemaphore semaphore = VK_NULL_HANDLE;
   //== Constructors ==//
-  VulkanSemaphore() { LOGERR("Not implente yet"); }
+  VulkanSemaphore(
+    VkDevice device_,
+    const VkAllocationCallbacks *allocator_callbacks_,
+    VkSemaphore semaphore_)
+      : device(device_), allocator_callbacks(allocator_callbacks_),
+        semaphore(semaphore_) {}
+
+public:
+  NO_COPY(VulkanSemaphore);
+  static auto create(
+    VkDevice device,
+    const VkSemaphoreCreateInfo *info,
+    const VkAllocationCallbacks *allocator_callbacks)
+    -> VulkanResult<VulkanSemaphore> {
+    VkSemaphore semaphore;
+    return VULKAN_RESULT(
+             vkCreateSemaphore(device, info, allocator_callbacks, &semaphore))
+      .replace_ok(VulkanSemaphore{device, allocator_callbacks, semaphore});
+  }
+
+  VulkanSemaphore(VulkanSemaphore &&rval) noexcept {
+    copy(rval);
+    rval.nullify();
+  }
+
+  auto operator=(VulkanSemaphore &&rval) noexcept -> VulkanSemaphore & {
+    if (this != &rval) {
+      copy(rval);
+      rval.nullify();
+    }
+    return *this;
+  }
+
+  ~VulkanSemaphore() noexcept {
+    if (device != VK_NULL_HANDLE) {
+      vkDestroySemaphore(device, semaphore, allocator_callbacks);
+      nullify();
+    }
+  }
+
+protected:
+  auto copy(const VulkanSemaphore &other) noexcept -> void {
+    this->device              = other.device;
+    this->allocator_callbacks = other.allocator_callbacks;
+    this->semaphore           = other.semaphore;
+  }
+
+  auto nullify() noexcept -> void {
+    device              = VK_NULL_HANDLE;
+    allocator_callbacks = nullptr;
+    semaphore           = VK_NULL_HANDLE;
+  }
 
   //== Methods ==//
+
 public:
-  inline auto raw() -> VkSemaphore & { return semaphore; };
+  inline auto raw() -> VkSemaphore { return semaphore; };
 
   static auto raw_span(std::span<VulkanSemaphore> semaphores) {
     std::vector<VkSemaphore> result;
@@ -35,6 +92,106 @@ public:
       .deviceIndex = 0,
 
     };
+  }
+};
+
+class VulkanBinarySemaphore : public VulkanSemaphore {
+  VulkanBinarySemaphore(
+    VkDevice device_,
+    const VkAllocationCallbacks *allocator_callbacks_,
+    VkSemaphore semaphore_)
+      : VulkanSemaphore(device_, allocator_callbacks_, semaphore_) {}
+
+public:
+  static auto
+  create(VkDevice device, const VkAllocationCallbacks *allocator_callbacks)
+    -> VulkanResult<VulkanBinarySemaphore> {
+    VkSemaphoreCreateInfo info{
+      .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+      .pNext = nullptr,
+      .flags = 0,
+    };
+    VkSemaphore sem;
+    return VULKAN_RESULT(
+             vkCreateSemaphore(device, &info, allocator_callbacks, &sem))
+      .replace_ok(VulkanBinarySemaphore{device, allocator_callbacks, sem});
+  }
+};
+
+class VulkanTimelineSemaphore : public VulkanSemaphore {
+  VulkanTimelineSemaphore(
+    VkDevice device_,
+    const VkAllocationCallbacks *allocator_callbacks_,
+    VkSemaphore semaphore_)
+      : VulkanSemaphore(device_, allocator_callbacks_, semaphore_) {}
+
+public:
+  static auto create(
+    VkDevice device,
+    const VkAllocationCallbacks *allocator_callbacks,
+    uint64_t initial_value) -> VulkanResult<VulkanTimelineSemaphore> {
+
+    VkSemaphoreTypeCreateInfo type_info{
+      .sType         = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
+      .pNext         = nullptr,
+      .semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE,
+      .initialValue  = initial_value,
+    };
+
+    VkSemaphoreCreateInfo info{
+      .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+      .pNext = &type_info,
+      .flags = 0,
+    };
+    VkSemaphore sem;
+    return VULKAN_RESULT(
+             vkCreateSemaphore(device, &info, allocator_callbacks, &sem))
+      .replace_ok(VulkanTimelineSemaphore{device, allocator_callbacks, sem});
+  }
+
+  auto signal(uint64_t value) {
+    VkSemaphoreSignalInfo info{
+      .sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO,
+      .pNext     = nullptr,
+      .semaphore = semaphore,
+      .value     = value,
+    };
+
+    return VULKAN_RESULT(vkSignalSemaphore(device, &info));
+  }
+
+  ///@brief wait for the semaphore to take a value
+  ///@param[in] value : the value to wait for
+  ///@param[in] timeout : timeout in nanoseconds
+  ///@return
+  /// - Ok(true) if succesfully wait
+  /// - Ok(false) if timeout
+  /// - Err(...) if an other error than `VK_TIMEOUT` is returned
+  auto wait(uint64_t value, uint64_t timeout_ns = UINT64_MAX)
+    -> VulkanResult<bool> {
+    VkSemaphoreWaitInfo info{
+      .sType          = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO,
+      .pNext          = nullptr,
+      .flags          = 0x0u,
+      .semaphoreCount = 1,
+      .pSemaphores    = &semaphore,
+      .pValues        = &value,
+    };
+    auto result = vkWaitSemaphores(device, &info, timeout_ns);
+
+    switch (result) {
+      case VK_SUCCESS: return VulkanResult<bool>::ok(true);
+      case VK_TIMEOUT: return VulkanResult<bool>::ok(false);
+      default:
+        return VulkanResult<bool>::err(
+          VulkanError(result, "vkWaitSemaphores(device, &info, timeout_ns)"));
+    }
+  }
+
+  auto query_value() -> VulkanResult<uint64_t> {
+    uint64_t value;
+    return VULKAN_RESULT(vkGetSemaphoreCounterValue(device, semaphore, &value))
+      .replace_ok(std::move(value));
   }
 };
 

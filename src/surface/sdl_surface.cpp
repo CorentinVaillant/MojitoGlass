@@ -8,7 +8,6 @@
 #include "surface.hpp"
 
 #include <volk.h>
-#include <vulkan/vulkan_core.h>
 
 namespace mjt {
 
@@ -76,7 +75,7 @@ auto SdlSurface::nullify() -> void {
 // == Methods == //
 
 auto SdlSurface::get_vk_surface(
-  VkInstance                   instance,
+  VkInstance instance,
   const VkAllocationCallbacks *allocator)
   -> Result<VkSurfaceKHR, VkSurfaceError> {
   VkSurfaceKHR surface;
@@ -92,7 +91,7 @@ auto SdlSurface::create(SdlSurfaceParams &params)
 
   SdlSurface result;
 
-  auto       err_ret = result.init(params);
+  auto err_ret = result.init(params);
   if (err_ret)
     return Result<SdlSurface, SdlSurfaceCreationError>::err(err_ret.value());
 

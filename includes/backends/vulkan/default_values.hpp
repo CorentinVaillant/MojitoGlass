@@ -65,7 +65,7 @@ constexpr VkPhysicalDeviceVulkan12Features DEFAULT_PHYSICAL_DEVICE_12_FEATURES{
   .shaderSubgroupExtendedTypes                        = VK_FALSE,
   .separateDepthStencilLayouts                        = VK_FALSE,
   .hostQueryReset                                     = VK_FALSE,
-  .timelineSemaphore                                  = VK_FALSE,
+  .timelineSemaphore                                  = VK_TRUE,
   .bufferDeviceAddress                                = VK_FALSE,
   .bufferDeviceAddressCaptureReplay                   = VK_FALSE,
   .bufferDeviceAddressMultiDevice                     = VK_FALSE,

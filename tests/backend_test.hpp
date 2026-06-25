@@ -39,14 +39,6 @@ TEST_CASE("VkBackend") {
     VulkanBackend backend2 = std::move(backend_result2.unwrap());
   }
 
-  SUBCASE("Queue") {
-    auto handle = backend.queue_pool().acquire(VulkanQueueFlagBit::Graphics, true);
-    CHECK(handle);
-
-    auto &h = (handle.value());
-    CHECK(h->wait_idle());
-  }
-
   SUBCASE("Mem Allocator creation + destruction") {
 
     AllocatorCreateFlags flags = {AllocatorCreateBit::ExternallySynchronized};
@@ -150,4 +142,53 @@ TEST_CASE("VkBackend") {
       }
     }
   }
+
+  SUBCASE("Queue") {
+    auto handle_ret =
+      backend.queue_pool().acquire(VulkanQueueFlagBit::Graphics, true);
+    CHECK(handle_ret);
+
+    auto &handle = (handle_ret.value());
+    CHECK(handle->wait_idle());
+
+    SUBCASE("Command pool") {
+      VulkanCmdPool cmd_pool =
+        handle->create_cmd_pool({CmdPoolCreateFlagBit::ResetCommandBufferBit})
+          .unwrap();
+
+      SUBCASE("Double creation") {
+        VulkanCmdPool cmd_pool2 =
+          handle->create_cmd_pool({/* CmdPoolCreateFlagBit::TransientBit */})
+            .unwrap();
+      }
+
+      SUBCASE("Reset") {
+        cmd_pool.reset().unwrap();
+        cmd_pool.reset(true).unwrap();
+      }
+
+      SUBCASE("Command Buffer") {
+        VulkanCmd cmd  = cmd_pool.create_cmd().unwrap();
+        VulkanCmd cmd2 = cmd_pool.create_cmd(true).unwrap();
+
+        cmd_pool.reset();
+        cmd_pool.reset(true);
+      }
+      SUBCASE("Imediate Cmd") {
+        ImediateCmd im_cmd = backend.create_imediate_cmd(cmd_pool).unwrap();
+
+        im_cmd
+          .submit([&](auto &cmd) {
+            //...
+            SUBCASE("Imediate ception") {
+              ImediateCmd im_cmd2 =
+                backend.create_imediate_cmd(cmd_pool).unwrap();
+              im_cmd2.submit([&](auto &cmd) { /*...*/ });
+            }
+          })
+          .unwrap();
+      }
+    }
+  }
+
 }

@@ -4,12 +4,46 @@
 #include "backends.hpp"
 #include "backends/vulkan/allocator.hpp"
 #include "backends/vulkan/backend_builder.hpp"
-#include "backends/vulkan/command_pool.hpp"
 #include "backends/vulkan/fence.hpp"
 #include "backends/vulkan/helpers.hpp"
 #include "backends/vulkan/queue.hpp"
+#include "common.hpp"
+#include <vulkan/vulkan_core.h>
 
 namespace mjt {
+
+auto debug_callback(
+  VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+  VkDebugUtilsMessageTypeFlagsEXT messageType,
+  const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
+  void *) -> VkBool32 {
+
+  const char *msg_type = vkb::to_string_message_type(messageType);
+  const char *msg_name = pCallbackData->pMessageIdName;
+  const char *msg      = pCallbackData->pMessage;
+
+  if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
+    LOGERR_NO_THROW("[{}] ({}) {}", msg_type, msg_name, msg);
+    return VK_FALSE;
+  } else if (
+    messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
+    LOGWARN("[{}] ({}) {}", msg_type, msg_name, msg);
+    return VK_TRUE;
+
+  } else if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) {
+    LOG(INFO, "[{}] ({}) {}", msg_type, msg_name, msg);
+    return VK_TRUE;
+
+  } else if (
+    messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) {
+    LOG(DEBUG, "[{}] ({}) {}", msg_type, msg_name, msg);
+    return VK_TRUE;
+
+  } else {
+    LOG(NOTSET, "[{}] ({}) {}", msg_type, msg_name, msg);
+  }
+  return VK_TRUE;
+}
 
 auto VulkanBackend::create(VulkanBackendBuilder &builder, IVkSurface &surface)
   -> Result<VulkanBackend, BackendCreationError> {
@@ -46,7 +80,7 @@ auto VulkanBackend::init(
   auto inst_ret =
     inst_builder.set_app_name(builder.app_name.c_str())
       .request_validation_layers(builder.use_validation_layer)
-      .use_default_debug_messenger()
+      .set_debug_callback(debug_callback)
       .require_api_version(VK_MAKE_API_VERSION(
         0, builder.minimum_version.x, builder.minimum_version.y, 0))
       //...
@@ -147,8 +181,10 @@ auto VulkanBackend::init(
   device = device_ret->device;
   // volkLoadDevice(device);
 
-  //! TODO > Return if err
-  init_queue_pool(queue_families_props).unwrap();
+  auto init_q_pool_res = init_queue_pool(queue_families_props);
+  if (init_q_pool_res.is_err())
+    return BackendCreationError::create_vulkan_failed_to_init_queue_pool(
+      std::move(init_q_pool_res.unwrap_err()));
 
   vma_functions.vkGetInstanceProcAddr = vkGetInstanceProcAddr;
   vma_functions.vkGetDeviceProcAddr   = vkGetDeviceProcAddr;
@@ -196,7 +232,7 @@ auto VulkanBackend::init_queue_pool(
         continue;
       };
       family.queues.emplace_back(
-        VulkanQueue(vk_queue, fam_idx, family.capabilities));
+        VulkanQueue(device, allocator, vk_queue, fam_idx, family.capabilities));
     }
 
     if (!family.queues.empty())
@@ -299,20 +335,6 @@ auto VulkanBackend::create_fence(bool signaled) const
   };
 
   return VulkanFence::create(device, &create_info, allocator);
-}
-
-// -- CmdPool
-auto VulkanBackend::create_cmd_pool(CmdPoolCreateFlags create_flags) const
-  -> VulkanResult<VulkanCmdPool> {
-
-  VkCommandPoolCreateInfo create_info{
-    .sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-    .pNext            = nullptr,
-    .flags            = create_flags.flags,
-    .queueFamilyIndex = 0,  // ~
-  };
-
-  return VulkanCmdPool::create(device, allocator, &create_info);
 }
 
 }  // namespace mjt

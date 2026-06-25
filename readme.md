@@ -16,4 +16,10 @@ cmake --build build
 
 You will find a test executable inside the `bin` folder.
 
+## TODO
+
+[ ] VulkanBackend:
+- [X] Queue
+- [ ] Semaphores
+- [ ] Swapchains
 

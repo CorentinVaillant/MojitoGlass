@@ -103,5 +103,21 @@ public:
   auto reset() -> VulkanResult<> {
     return VULKAN_RESULT(vkResetFences(device, 1, &fence));
   }
+
+  ///@brief submit command buffers, with this fence, using
+  ///`vkQueueSubmit2(queue, submits.size(), submits.data(), fence)`
+  auto cmd_submit(VkQueue queue, std::span<const VkSubmitInfo2> submits) {
+    return VULKAN_RESULT(
+      vkQueueSubmit2(queue, submits.size(), submits.data(), fence));
+  }
+
+  inline auto raw() { return fence; };
+
+  static auto raw_span(std::span<VulkanFence> fences) {
+    std::vector<VkFence> result;
+    for (auto &fence : fences)
+      result.push_back(fence.fence);
+    return result;
+  }
 };
 }  // namespace mjt

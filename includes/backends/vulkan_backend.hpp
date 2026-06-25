@@ -1,6 +1,6 @@
 #pragma once
 
-#include "backends/vulkan/command_pool.hpp"
+#include "backends/vulkan/command_buffer.hpp"
 #include "backends/vulkan/fence.hpp"
 #include "backends/vulkan/helpers.hpp"
 #include "backends/vulkan/queue.hpp"
@@ -79,9 +79,17 @@ public:
   // -- Fence
   auto create_fence(bool signaled = false) const -> VulkanResult<VulkanFence>;
 
-  // -- CmdPool
-  auto create_cmd_pool(CmdPoolCreateFlags create_flags) const
-    -> VulkanResult<VulkanCmdPool>;
+  auto create_imediate_cmd(VulkanCmdPool &pool) -> VulkanResult<ImediateCmd> {
+    auto fence_ret = create_fence();
+    if (!fence_ret)
+      return VulkanResult<ImediateCmd>::err(fence_ret.unwrap_err());
+    auto cmd_ret = pool.create_cmd(true);
+    if (!cmd_ret)
+      return VulkanResult<ImediateCmd>::err(cmd_ret.unwrap_err());
+
+    return VulkanResult<ImediateCmd>::ok(
+      ImediateCmd(std::move(cmd_ret.unwrap()), std::move(fence_ret.unwrap())));
+  }
 };
 
 }  // namespace mjt

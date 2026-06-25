@@ -15,12 +15,13 @@ namespace mjt {
 struct BackendCreationError : public IError {
   struct NoInnerErrorVariant {};
   enum class ErrorType {
-    vulkan_failed_to_load_instance,  // Stored in variant 0
-    vulkan_failed_to_select_device,  // Stored in variant 0
-    vulkan_failed_to_build_device,   // Stored in variant 0
-    surface_creation_error,          // Stored in variant 1
-    volk_initialization_error,       // Stored in variant 2
-    vulkan_no_queue_available,       // Stored in variant 3
+    vulkan_failed_to_load_instance,    // Stored in variant 0
+    vulkan_failed_to_select_device,    // Stored in variant 0
+    vulkan_failed_to_build_device,     // Stored in variant 0
+    surface_creation_error,            // Stored in variant 1
+    volk_initialization_error,         // Stored in variant 2
+    vulkan_failed_to_init_queue_pool,  // Stored in variant 2
+    vulkan_no_queue_available,         // Stored in variant 3
   };
 
   using InnerVariant = std::
@@ -44,6 +45,9 @@ struct BackendCreationError : public IError {
   CREATE_BACK_CREATION_ERROR_CONSTR(surface_creation_error, VkSurfaceError);
   CREATE_BACK_CREATION_ERROR_CONSTR(volk_initialization_error, VulkanError);
   CREATE_BACK_CREATION_ERROR_CONSTR(
+    vulkan_failed_to_init_queue_pool,
+    VulkanError);
+  CREATE_BACK_CREATION_ERROR_CONSTR(
     vulkan_no_queue_available,
     NoInnerErrorVariant);
 
@@ -55,13 +59,11 @@ struct BackendCreationError : public IError {
           "Vulkan failed to load instance, error {} -> {}",
           std::get<0>(error).value(),
           std::get<0>(error).message());
-
       case ErrorType::vulkan_failed_to_select_device:
         return fmt::format(
           "Vulkan failed to select device, error {} -> {}",
           std::get<0>(error).value(),
           std::get<0>(error).message());
-
       case ErrorType::vulkan_failed_to_build_device:
         return fmt::format(
           "Vulkan failed to build device, error {} -> {}",
@@ -70,8 +72,12 @@ struct BackendCreationError : public IError {
 
       case ErrorType::surface_creation_error:
         return std::get<1>(error).to_string();
+
       case ErrorType::volk_initialization_error:
         return std::get<2>(error).to_string();
+      case ErrorType::vulkan_failed_to_init_queue_pool:
+        return std::get<2>(error).to_string();
+
       case ErrorType::vulkan_no_queue_available:
         return "Vulkan, failed to find available queues.";
     }

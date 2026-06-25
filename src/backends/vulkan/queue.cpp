@@ -26,56 +26,22 @@ auto VulkanQueue::operator=(VulkanQueue &&rval) noexcept -> VulkanQueue & {
 }
 
 auto VulkanQueue::copy(const VulkanQueue &other) noexcept -> void {
-  this->queue      = other.queue;
-  this->family_idx = other.family_idx;
-  this->caps       = other.caps;
+  this->device      = other.device;
+  this->alloc_calls = other.alloc_calls;
+  this->queue       = other.queue;
+  this->family_idx  = other.family_idx;
+  this->caps        = other.caps;
 }
 
 auto VulkanQueue::nullify() noexcept -> void {
-  queue      = VK_NULL_HANDLE;
-  family_idx = 0;
-  caps       = {};
+  device      = VK_NULL_HANDLE;
+  alloc_calls = nullptr;
+  queue       = VK_NULL_HANDLE;
+  family_idx  = 0;
+  caps        = {};
 }
 
 //== Methods ==//
-auto VulkanQueue::submit(
-  VkCommandBuffer cmd,
-  VulkanFence *signal_fence,
-  VulkanSemaphore *wait_semaphore,
-  VulkanSemaphore *signal_semaphore,
-  VulkanPipelineStages wait_stages,
-  bool protected_submit) -> VulkanResult<> {
-
-  VkSemaphoreSubmitInfo wait_submit_info;
-  if (wait_semaphore)
-    wait_submit_info = wait_semaphore->submit_info(0, wait_stages.flags);
-
-  VkCommandBufferSubmitInfo cmd_submit_info{
-    .sType         = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
-    .pNext         = nullptr,
-    .commandBuffer = cmd,
-    .deviceMask    = 0,
-  };
-
-  VkSemaphoreSubmitInfo signal_submit_info;
-  if (signal_semaphore)
-    signal_submit_info = signal_semaphore->submit_info(0, wait_stages.flags);
-
-  VkSubmitInfo2 info{
-    .sType                  = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
-    .pNext                  = nullptr,
-    .flags                  = protected_submit ? VK_SUBMIT_PROTECTED_BIT : 0x0u,
-    .waitSemaphoreInfoCount = wait_semaphore ? 1u : 0u,
-    .pWaitSemaphoreInfos    = wait_semaphore ? &wait_submit_info : nullptr,
-    .commandBufferInfoCount = 1,
-    .pCommandBufferInfos    = &cmd_submit_info,
-    .signalSemaphoreInfoCount = signal_semaphore ? 1u : 0u,
-    .pSignalSemaphoreInfos = signal_semaphore ? &signal_submit_info : nullptr,
-  };
-
-  return VULKAN_RESULT(vkQueueSubmit2(
-    queue, 1, &info, signal_fence ? signal_fence->raw() : VK_NULL_HANDLE));
-}
 
 auto VulkanQueue::present(
   VulkanSwapchain &swapchain,
@@ -103,6 +69,19 @@ auto VulkanQueue::present(
 
 auto VulkanQueue::wait_idle() -> VulkanResult<> {
   return VULKAN_RESULT(vkQueueWaitIdle(queue));
+}
+
+auto VulkanQueue::create_cmd_pool(CmdPoolCreateFlags create_flags)
+  -> VulkanResult<VulkanCmdPool> {
+
+  VkCommandPoolCreateInfo create_info{
+    .sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+    .pNext            = nullptr,
+    .flags            = create_flags.flags,
+    .queueFamilyIndex = family_idx,
+  };
+
+  return VulkanCmdPool::create(device, queue, alloc_calls, &create_info);
 }
 
 //===== VulkanQueuePool =====//

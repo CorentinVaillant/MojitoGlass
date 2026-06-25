@@ -17,7 +17,7 @@
 #include <type_traits>
 #include <utility>
 #include <variant>
-//fmt includes
+// fmt includes
 #include <fmt/base.h>
 #include <fmt/core.h>
 #include <fmt/format.h>
@@ -43,7 +43,7 @@ enum LogLvl {
   NOTSET   = 0,
 };
 
-constexpr bool THROW_ON_MACRO_ERR = true;
+#define THROW_ON_MACRO_ERR 1
 
 #ifndef VERBOSITY
 #define LOG(level, ...)                                                        \
@@ -54,11 +54,12 @@ constexpr bool THROW_ON_MACRO_ERR = true;
   do {                                                                         \
     if (VERBOSITY <= level) {                                                  \
       fmt::print(                                                              \
-        "[{}LOG {}] {}::{} ",                                                  \
+        "[{}LOG {}] {}::{} ({}) ",                                             \
         ansi_code::BBLU,                                                       \
         ansi_code::reset,                                                      \
         __func__,                                                              \
-        __LINE__);                                                             \
+        __LINE__,                                                              \
+        #level);                                                               \
       fmt::println(__VA_ARGS__);                                               \
     }                                                                          \
   } while (0)
@@ -87,6 +88,12 @@ constexpr bool THROW_ON_MACRO_ERR = true;
     fmt::println(__VA_ARGS__);                                                 \
   } while (0)
 
+#ifdef THROW_ON_MACRO_ERR
+#define LOGERR_CALLBACK throw std::runtime_error("Log err");
+#else
+#define LOGERR_CALLBACK
+#endif
+
 #define LOGERR(...)                                                            \
   {                                                                            \
     fmt::print(                                                                \
@@ -96,8 +103,18 @@ constexpr bool THROW_ON_MACRO_ERR = true;
       __func__,                                                                \
       __LINE__);                                                               \
     fmt::println(__VA_ARGS__);                                                 \
-    if (THROW_ON_MACRO_ERR)                                                    \
-      throw std::runtime_error("Log err");                                     \
+    LOGERR_CALLBACK                                                            \
+  }
+
+#define LOGERR_NO_THROW(...)                                                   \
+  {                                                                            \
+    fmt::print(                                                                \
+      "[{}ERR {}] {}::{} ",                                                    \
+      ansi_code::BRED,                                                         \
+      ansi_code::reset,                                                        \
+      __func__,                                                                \
+      __LINE__);                                                               \
+    fmt::println(__VA_ARGS__);                                                 \
   }
 
 #define ASSERT_ERR(expr, ...)                                                  \

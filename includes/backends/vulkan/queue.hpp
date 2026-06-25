@@ -1,6 +1,6 @@
 #pragma once
 
-#include "backends/vulkan/fence.hpp"
+#include "backends/vulkan/command_pool.hpp"
 #include "backends/vulkan/semaphore.hpp"
 #include "backends/vulkan/swapchain.hpp"
 #include <optional>
@@ -37,13 +37,22 @@ class VulkanQueue {
   friend VulkanQueuePool;
   friend VulkanBackend;
   //== Attributs ==//
-  VkQueue queue          = VK_NULL_HANDLE;
-  uint32_t family_idx    = 0;
-  QueueCapabilities caps = {};
+  VkDevice device                          = VK_NULL_HANDLE;
+  const VkAllocationCallbacks *alloc_calls = nullptr;
+  VkQueue queue                            = VK_NULL_HANDLE;
+
+  uint32_t family_idx                      = 0;
+  QueueCapabilities caps                   = {};
 
   //== Constructors ==//
-  VulkanQueue(VkQueue q, uint32_t family, QueueCapabilities c)
-      : queue(q), family_idx(family), caps(c) {}
+  VulkanQueue(
+    VkDevice device_,
+    const VkAllocationCallbacks *allocator_callback,
+    VkQueue q,
+    uint32_t family,
+    QueueCapabilities c)
+      : device(device_), alloc_calls(allocator_callback), queue(q),
+        family_idx(family), caps(c) {}
 
 public:
   NO_COPY(VulkanQueue);
@@ -55,19 +64,14 @@ private:
   auto nullify() noexcept -> void;
   //== Methods ==//
 public:
-  auto submit(
-    VkCommandBuffer cmd,
-    VulkanFence *signal_fence         = nullptr,
-    VulkanSemaphore *wait_semaphore   = nullptr,
-    VulkanSemaphore *signal_semaphore = nullptr,
-    VulkanPipelineStages wait_stages  = VulkanPipelineStage::TopOfPipe,
-    bool protected_submit             = false) -> VulkanResult<>;
-
   auto present(
     VulkanSwapchain &swapchain,
     uint32_t image_index,
     VulkanSemaphore * = nullptr) -> VulkanResult<>;
   auto wait_idle() -> VulkanResult<>;
+
+  auto create_cmd_pool(CmdPoolCreateFlags create_flags)
+    -> VulkanResult<VulkanCmdPool>;
 
   // Getters
   inline uint32_t family_index() const { return family_idx; }
@@ -153,7 +157,8 @@ public:
 
   ///@brief return the dedicated family to a capability
   ///@return `nullopt` if the familly does not exist.
-  auto dedicated_family(VulkanQueueFlagBit cap) const -> std::optional<uint32_t>;
+  auto dedicated_family(VulkanQueueFlagBit cap) const
+    -> std::optional<uint32_t>;
 
   ///@return all the familly indices present.
   auto all_family_indices() const -> std::vector<uint32_t>;

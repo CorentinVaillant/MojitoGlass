@@ -88,7 +88,7 @@ constexpr VkPhysicalDeviceVulkan13Features DEFAULT_PHYSICAL_DEVICE_13_FEATURES{
   .shaderTerminateInvocation                          = VK_FALSE,
   .subgroupSizeControl                                = VK_FALSE,
   .computeFullSubgroups                               = VK_FALSE,
-  .synchronization2                                   = VK_FALSE,
+  .synchronization2                                   = VK_TRUE,
   .textureCompressionASTC_HDR                         = VK_FALSE,
   .shaderZeroInitializeWorkgroupMemory                = VK_FALSE,
   .dynamicRendering                                   = VK_FALSE,

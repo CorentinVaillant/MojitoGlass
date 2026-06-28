@@ -5,6 +5,7 @@
 #include "math/vec2.hpp"
 
 namespace mjt {
+namespace vk {
 
 constexpr bool DEFAULT_VALIDATION_LAYER =
 #ifndef NDEBUG
@@ -14,7 +15,7 @@ constexpr bool DEFAULT_VALIDATION_LAYER =
 #endif
 
 //===== DeviceExtensions =====//
-struct VulkanDeviceFeatures {
+struct DeviceFeatures {
 
   VkPhysicalDeviceAccelerationStructureFeaturesKHR acc_struct_features{
     .sType =
@@ -39,14 +40,14 @@ struct VulkanDeviceFeatures {
   };
   // TODO add all the required features
 
-  VulkanDeviceFeatures() { chain(); }
+  DeviceFeatures() { chain(); }
 
-  VulkanDeviceFeatures(const VulkanDeviceFeatures &other) {
+  DeviceFeatures(const DeviceFeatures &other) {
     memcpy((void *)this, &other, sizeof(other));
     chain();
   }
 
-  VulkanDeviceFeatures &operator=(const VulkanDeviceFeatures &other) {
+  DeviceFeatures &operator=(const DeviceFeatures &other) {
     if (this != &other) {
       memcpy((void *)this, &other, sizeof(other));
       chain();
@@ -96,13 +97,13 @@ public:
   VoidPtrDeviceExtIterator end() { return VoidPtrDeviceExtIterator(nullptr); }
 };
 
-//===== VulkanQueueRequest =====//
-struct VulkanQueueRequest {
+//===== QueueRequest =====//
+struct QueueRequest {
   QueueCapabilities capabilities;
   uint32_t count = 1;
 };
 //===== VkBackendBuilder =====//
-struct VulkanBackendBuilder {
+struct BackendBuilder {
   std::string app_name      = "Vk app";
   bool use_validation_layer = DEFAULT_VALIDATION_LAYER;
   UVec2 minimum_version     = {1, 3};
@@ -115,13 +116,14 @@ struct VulkanBackendBuilder {
   VkPhysicalDeviceVulkan14Features physical_device_Vk14_feature =
     DEFAULT_PHYSICAL_DEVICE_14_FEATURES;
 
-  std::vector<const char *> devices_extensions = DEFAULT_DEVICE_EXT;
+  std::vector<const char *> devices_extensions  = DEFAULT_DEVICE_EXT;
   std::vector<const char *> instance_extensions = DEFAULT_INSTANCE_EXT;
 
-  VulkanDeviceFeatures device_features;
+  DeviceFeatures device_features;
 
-  std::vector<VulkanQueueRequest> queue_request = {
-    {{VulkanQueueFlagBit::Graphics, true}, 1},
-    {{VulkanQueueFlagBit::Transfer, false}, 1}};
+  std::vector<QueueRequest> queue_request = {
+    {{QueueFlagBit::Graphics, true}, 1},
+    {{QueueFlagBit::Transfer, false}, 1}};
 };
+}  // namespace vk
 }  // namespace mjt

@@ -13,20 +13,20 @@
 #include "common.hpp"
 #include "surface/sdl_surface.hpp"
 
-#include <cstdint>
 #include <doctest/doctest.h>
 
 using namespace mjt;
+using namespace vk;
 
 TEST_CASE("VkBackend") {
   SdlSurfaceParams params = SdlSurfaceParams::create_vulkan_presset("test_app");
 
   auto surface            = SdlSurface::create(params).unwrap();
 
-  VulkanBackendBuilder builder;
+  BackendBuilder builder;
   builder.app_name             = "test_app";
   builder.use_validation_layer = true;
-  auto backend_result          = VulkanBackend::create(builder, surface);
+  auto backend_result          = Backend::create(builder, surface);
   CHECK_MESSAGE(
     backend_result.is_ok(),
     "Error while creating vulkan backend got : \n\t",
@@ -37,18 +37,18 @@ TEST_CASE("VkBackend") {
   auto infos   = backend.get_info();
 
   SUBCASE("Double VkBackend creation") {
-    auto backend_result2 = VulkanBackend::create(builder, surface);
+    auto backend_result2 = Backend::create(builder, surface);
     CHECK_MESSAGE(
       backend_result2.is_ok(),
       "Error while creating vulkan backend got : \n\t",
       backend_result2.unwrap_err().to_string());
-    VulkanBackend backend2 = std::move(backend_result2.unwrap());
+    Backend backend2 = std::move(backend_result2.unwrap());
   }
   SUBCASE("Mem Allocator creation + destruction") {
 
     AllocatorCreateFlags flags = {AllocatorCreateBit::ExternallySynchronized};
 
-    VulkanMemoryAllocator allocator =
+    MemoryAllocator allocator =
       backend.create_memory_allocator(flags).unwrap();
 
     SUBCASE("Buffer creation + destruction") {
@@ -58,23 +58,23 @@ TEST_CASE("VkBackend") {
         char bar3;
       };
 
-      VulkanBuffer<Foo> buffer = allocator
+      Buffer<Foo> buffer = allocator
                                    .create_buffer<Foo>(
                                      10,
-                                     {VulkanBufferUsageBit::StorageBuffer,
-                                      VulkanBufferUsageBit::TransferSrc,
-                                      VulkanBufferUsageBit::TransferDst},
+                                     {BufferUsageBit::StorageBuffer,
+                                      BufferUsageBit::TransferSrc,
+                                      BufferUsageBit::TransferDst},
                                      MemoryUsage::Auto,
                                      {AllocationCreateBits::Mapped,
                                       AllocationCreateBits::HostAccessRandom})
                                    .unwrap();
 
       SUBCASE("Multiple buffers") {
-        std::vector<VulkanBuffer<uint8_t>> buffers;
-        VulkanBufferUsage usage{
-          VulkanBufferUsageBit::StorageBuffer,
-          VulkanBufferUsageBit::TransferSrc,
-          VulkanBufferUsageBit::TransferDst};
+        std::vector<Buffer<uint8_t>> buffers;
+        BufferUsage usage{
+          BufferUsageBit::StorageBuffer,
+          BufferUsageBit::TransferSrc,
+          BufferUsageBit::TransferDst};
 
         for (int i = 0; i < 10; i++) {
           buffers.emplace_back(
@@ -104,12 +104,12 @@ TEST_CASE("VkBackend") {
     }
 
     SUBCASE("Double mem allocator") {
-      VulkanMemoryAllocator allocator2 =
+      MemoryAllocator allocator2 =
         backend.create_memory_allocator(flags).unwrap();
 
       SUBCASE("Multiple allocator buffers") {
-        std::vector<VulkanBuffer<uint8_t>> buffers;
-        VulkanBufferUsage usage{VulkanBufferUsageBit::StorageBuffer};
+        std::vector<Buffer<uint8_t>> buffers;
+        BufferUsage usage{BufferUsageBit::StorageBuffer};
         for (int i = 0; i < 5; i++) {
           buffers.emplace_back(
             allocator.create_buffer<uint8_t>(i + 1, usage, MemoryUsage::Auto)
@@ -126,10 +126,10 @@ TEST_CASE("VkBackend") {
 
   SUBCASE("Fence creation + destruction") {
 
-    VulkanFence fence = backend.create_fence().unwrap();
+    Fence fence = backend.create_fence().unwrap();
 
     SUBCASE("Fence creation + destruction 2") {
-      VulkanFence fence2 = backend.create_fence(true).unwrap();
+      Fence fence2 = backend.create_fence(true).unwrap();
 
       SUBCASE("Wait for fences") {
         CHECK(fence.wait(1'000'000).unwrap() == false);
@@ -150,14 +150,14 @@ TEST_CASE("VkBackend") {
 
   SUBCASE("Semaphore") {
     SUBCASE("Binary semaphore") {
-      VulkanBinarySemaphore semaphore =
+      BinarySemaphore semaphore =
         backend.create_binary_semaphore().unwrap();
 
       CHECK(semaphore.raw() != VK_NULL_HANDLE);
     }
 
     SUBCASE("Timeline Semaphore") {
-      VulkanTimelineSemaphore semaphore =
+      TimelineSemaphore semaphore =
         backend.create_timeline_semaphore(5u).unwrap();
 
       CHECK(semaphore.query_value().unwrap() == 5);
@@ -179,19 +179,19 @@ TEST_CASE("VkBackend") {
 
   SUBCASE("Queue") {
     auto handle_ret =
-      backend.queue_pool().acquire(VulkanQueueFlagBit::Graphics, true);
+      backend.queue_pool().acquire(QueueFlagBit::Graphics, true);
     CHECK(handle_ret);
 
     auto &handle = (handle_ret.value());
     CHECK(handle->wait_idle());
 
     SUBCASE("Command pool") {
-      VulkanCmdPool cmd_pool =
+      CmdPool cmd_pool =
         handle->create_cmd_pool({CmdPoolCreateFlagBit::ResetCommandBufferBit})
           .unwrap();
 
       SUBCASE("Double creation") {
-        VulkanCmdPool cmd_pool2 =
+        CmdPool cmd_pool2 =
           handle->create_cmd_pool({/* CmdPoolCreateFlagBit::TransientBit */})
             .unwrap();
       }
@@ -202,8 +202,8 @@ TEST_CASE("VkBackend") {
       }
 
       SUBCASE("Command Buffer") {
-        VulkanCmd cmd  = cmd_pool.create_cmd().unwrap();
-        VulkanCmd cmd2 = cmd_pool.create_cmd(true).unwrap();
+        CommandBuffer cmd  = cmd_pool.create_cmd().unwrap();
+        CommandBuffer cmd2 = cmd_pool.create_cmd(true).unwrap();
 
         cmd_pool.reset();
         cmd_pool.reset(true);
@@ -225,17 +225,17 @@ TEST_CASE("VkBackend") {
     }
 
     SUBCASE("Swapchain") {
-      VulkanSwapchainBuilder builder = backend.create_swapchain_builder();
+      SwapchainBuilder builder = backend.create_swapchain_builder();
 
-      builder.set_image_usage(VulkanImageUsageBit::ColorAttachmentBit);
+      builder.set_image_usage(ImageUsageBit::ColorAttachmentBit);
 
       for (auto &[format, color_space] : infos.supported_format) {
         builder.set_image_format(format);
         builder.set_image_color_space(color_space);
-        for (int i = infos.min_image_count; i < infos.max_image_count; i++) {
+        for (size_t i = infos.min_image_count; i < infos.max_image_count; i++) {
           builder.set_min_image_count(i);
 
-          VulkanSwapchain swapchain = builder.build().unwrap();
+          Swapchain swapchain = builder.build().unwrap();
         }
       }
     }

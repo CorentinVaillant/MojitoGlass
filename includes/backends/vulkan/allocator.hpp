@@ -9,6 +9,7 @@
 #include <volk/volk.h>
 
 namespace mjt {
+namespace vk {
 
 // ===== Flags =====
 enum class AllocatorCreateBit : uint32_t {
@@ -27,7 +28,7 @@ enum class AllocatorCreateBit : uint32_t {
 using AllocatorCreateFlags =
   EnumFlagsWrapper<VmaAllocatorCreateFlags, AllocatorCreateBit>;
 
-enum class VulkanBufferUsageBit : uint32_t {
+enum class BufferUsageBit : uint32_t {
   TransferSrc         = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
   TransferDst         = VK_BUFFER_USAGE_TRANSFER_DST_BIT,
   UniformTexelBuffer  = VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT,
@@ -40,8 +41,8 @@ enum class VulkanBufferUsageBit : uint32_t {
   ShaderDeviceAddress = VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
 };
 
-using VulkanBufferUsage =
-  EnumFlagsWrapper<VkBufferUsageFlags, VulkanBufferUsageBit>;
+using BufferUsage =
+  EnumFlagsWrapper<VkBufferUsageFlags, BufferUsageBit>;
 
 ///@brief Only non deprecated usages of VmaMemoryUsage
 enum class MemoryUsage : uint32_t {
@@ -74,13 +75,13 @@ enum class AllocationCreateBits : uint32_t {
 using AllocationCreateFlags =
   EnumFlagsWrapper<VmaAllocationCreateFlags, AllocationCreateBits>;
 
-class VulkanMemoryAllocator;
+class MemoryAllocator;
 
 // Buffer
 
 ///@brief Wrapper for a VkBuffer.
 ///@important `T` must be a trivially copyable type
-template <GpuUploadable T> class VulkanBuffer {
+template <GpuUploadable T> class Buffer {
   // == Attributs == //
 
   VmaAllocator allocator       = VK_NULL_HANDLE;
@@ -90,7 +91,7 @@ template <GpuUploadable T> class VulkanBuffer {
   size_t count;
 
   // == Constructors == //
-  VulkanBuffer(
+  Buffer(
     VmaAllocator allocator_,
     VkBuffer buf,
     VmaAllocation alloc,
@@ -100,13 +101,13 @@ template <GpuUploadable T> class VulkanBuffer {
         alloc_info(allocation_info), count(n) {}
 
 public:
-  NO_COPY(VulkanBuffer);
+  NO_COPY(Buffer);
 
   static auto create(
     VmaAllocator allocator,
     const VkBufferCreateInfo *ptr_buffer_info,
     const VmaAllocationCreateInfo *ptr_alloc_create_info,
-    size_t count) -> VulkanResult<VulkanBuffer> {
+    size_t count) -> VulkanResult<Buffer> {
     VkBuffer buffer;
     VmaAllocation allocation;
     VmaAllocationInfo allocation_info;
@@ -119,15 +120,15 @@ public:
                            &allocation,
                            &allocation_info))
       .replace_ok(
-        VulkanBuffer(allocator, buffer, allocation, allocation_info, count));
+        Buffer(allocator, buffer, allocation, allocation_info, count));
   }
 
-  VulkanBuffer(VulkanBuffer &&rval) noexcept {
+  Buffer(Buffer &&rval) noexcept {
     copy(rval);
     rval.nullify();
   }
 
-  auto operator=(VulkanBuffer &&rval) noexcept -> VulkanBuffer & {
+  auto operator=(Buffer &&rval) noexcept -> Buffer & {
     if (this != &rval) {
       copy(rval);
       rval.nullify();
@@ -135,7 +136,7 @@ public:
     return *this;
   }
 
-  ~VulkanBuffer() noexcept {
+  ~Buffer() noexcept {
     if (allocator != VK_NULL_HANDLE) {
       vmaDestroyBuffer(allocator, buffer, allocation);
       nullify();
@@ -154,7 +155,7 @@ private:
   // == Methods == //
 
 private:
-  auto copy(const VulkanBuffer &other) noexcept -> void {
+  auto copy(const Buffer &other) noexcept -> void {
     allocator  = other.allocator;
     buffer     = other.buffer;
     allocation = other.allocation;
@@ -165,7 +166,7 @@ private:
 public:
   ///@brief write from CPU memory to the buffer.
   ///@important if not created with AllocationCreateBits::Mapped and
-  /// VulkanBufferUsageBit::TransferDst, will fail and crash.
+  /// BufferUsageBit::TransferDst, will fail and crash.
   auto write(size_t dst_offset, std::span<const T> src) -> void {
     ASSERT_ERR(allocator != VK_NULL_HANDLE, "write on a destroyed buffer.");
     ASSERT_ERR(
@@ -179,13 +180,13 @@ public:
   }
   ///@brief write from CPU memory to the buffer.
   ///@important if not created with AllocationCreateBits::Mapped and
-  /// VulkanBufferUsageBit::TransferDst, will fail and crash.
+  /// BufferUsageBit::TransferDst, will fail and crash.
   inline auto write(size_t dst_offset, size_t src_count, const T *src) {
     write(dst_offset, {src, src_count});
   }
   ///@brief write from CPU memory to the buffer.
   ///@important if not created with AllocationCreateBits::Mapped and
-  /// VulkanBufferUsageBit::TransferDst, will fail and crash.
+  /// BufferUsageBit::TransferDst, will fail and crash.
   inline auto write(std::span<const T> src) { write(0, src); }
 
   ///@brief flush the memory using vmaFlushAllocation.
@@ -201,7 +202,7 @@ public:
 
   ///@brief read from the buffer to the CPU memory.
   ///@important if not created with AllocationCreateBits::Mapped and
-  /// VulkanBufferUsageBit::TransferSrc, will fail and crash.
+  /// BufferUsageBit::TransferSrc, will fail and crash.
   auto read(size_t src_offset, std::span<T> dst) -> void {
     ASSERT_ERR(allocator != VK_NULL_HANDLE, "read on a destroyed buffer.");
     ASSERT_ERR(
@@ -216,41 +217,41 @@ public:
 
   ///@brief read from the buffer to the CPU memory.
   ///@important if not created with AllocationCreateBits::Mapped and
-  /// VulkanBufferUsageBit::TransferSrc, will fail and crash.
+  /// BufferUsageBit::TransferSrc, will fail and crash.
   inline auto read(size_t src_offset, size_t dst_count, T *dst) {
     read(src_offset, {dst, dst_count});
   }
   ///@brief read from the buffer to the CPU memory.
   ///@important if not created with AllocationCreateBits::Mapped and
-  /// VulkanBufferUsageBit::TransferSrc, will fail and crash.
+  /// BufferUsageBit::TransferSrc, will fail and crash.
   inline auto read(std::span<T> dst) { read(0, dst); }
 };
 
-// ===== VulkanMemoryAllocator =====
+// ===== MemoryAllocator =====
 
 ///@brief Wrapper for a vulkan memory allocator
-class VulkanMemoryAllocator {
+class MemoryAllocator {
   // == Attributs == //
   VmaAllocator allocator = VK_NULL_HANDLE;
 
   // == Constructors == //
-  VulkanMemoryAllocator() = delete;
-  VulkanMemoryAllocator(VmaAllocator allocator_) : allocator(allocator_) {}
+  MemoryAllocator() = delete;
+  MemoryAllocator(VmaAllocator allocator_) : allocator(allocator_) {}
 
 public:
   static auto create(VmaAllocatorCreateInfo &infos)
-    -> Result<VulkanMemoryAllocator, VulkanError> {
+    -> Result<MemoryAllocator, VulkanError> {
     VmaAllocator allocator;
     return VULKAN_RESULT(vmaCreateAllocator(&infos, &allocator))
-      .replace_ok(VulkanMemoryAllocator(allocator));
+      .replace_ok(MemoryAllocator(allocator));
   }
 
-  VulkanMemoryAllocator(VulkanMemoryAllocator &&rval) noexcept {
+  MemoryAllocator(MemoryAllocator &&rval) noexcept {
     this->allocator = rval.allocator;
     rval.nullify();
   }
 
-  VulkanMemoryAllocator &operator=(VulkanMemoryAllocator &&rval) noexcept {
+  MemoryAllocator &operator=(MemoryAllocator &&rval) noexcept {
     if (this != &rval) {
       this->allocator = rval.allocator;
       rval.nullify();
@@ -258,7 +259,7 @@ public:
     return *this;
   }
 
-  ~VulkanMemoryAllocator() noexcept {
+  ~MemoryAllocator() noexcept {
     if (allocator)
       vmaDestroyAllocator(allocator);
     nullify();
@@ -269,7 +270,7 @@ private:
 
   // == Methods ==
 public:
-  ///@brief create a `VulkanBuffer<T>`
+  ///@brief create a `Buffer<T>`
   ///@param[in] count : the number of ellement of type `T` to be in the buffer
   ///@param[in] usage : vulkan buffer usage
   ///@param[in] mem_usage : VMA memory usage
@@ -279,11 +280,11 @@ public:
   template <GpuUploadable T>
   auto create_buffer(
     size_t count,
-    VulkanBufferUsage usage,
+    BufferUsage usage,
     MemoryUsage mem_usage                   = MemoryUsage::AutoPreferDevice,
     AllocationCreateFlags alloc_create_flag = {},
     std::optional<std::span<uint32_t>> sharing_mode_queues = std::nullopt)
-    -> VulkanResult<VulkanBuffer<T>> {
+    -> VulkanResult<Buffer<T>> {
 
     VkBufferCreateInfo buffer_info{
       .sType       = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
@@ -314,9 +315,9 @@ public:
       .priority       = 0,
     };
 
-    return VulkanBuffer<T>::create(
+    return Buffer<T>::create(
       allocator, &buffer_info, &alloc_create_info, count);
   }
 };
-
+}  // namespace vk
 }  // namespace mjt

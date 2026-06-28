@@ -10,12 +10,13 @@
 #include "helpers.hpp"
 
 namespace mjt {
+namespace vk {
 
-class VulkanSwapchainBuilder;
+class SwapchainBuilder;
 
 // TODO
-class VulkanSwapchain {
-  friend VulkanSwapchainBuilder;
+class Swapchain {
+  friend SwapchainBuilder;
   //== Attributs ==//
 private:
   struct SwapchainImage {
@@ -35,8 +36,8 @@ private:
 
   //== Constructors ==//
 private:
-  NO_COPY(VulkanSwapchain);
-  VulkanSwapchain(
+  NO_COPY(Swapchain);
+  Swapchain(
     VkDevice device_,
     VkSwapchainKHR swapchain_,
     const VkAllocationCallbacks *alloc_callbacks_,
@@ -57,7 +58,7 @@ private:
     image_available = VK_NULL_HANDLE;
     render_fence    = VK_NULL_HANDLE;
   }
-  auto copy(const VulkanSwapchain &other) noexcept -> void {
+  auto copy(const Swapchain &other) noexcept -> void {
     this->device          = other.device;
     this->swapchain       = other.swapchain;
     this->alloc_callbacks = other.alloc_callbacks;
@@ -65,18 +66,18 @@ private:
     this->image_available = other.image_available;
     this->render_fence    = other.render_fence;
   }
-  auto move(VulkanSwapchain &&other) noexcept -> void {
+  auto move(Swapchain &&other) noexcept -> void {
     this->images = std::move(other.images);
   }
 
 public:
-  VulkanSwapchain(VulkanSwapchain &&rval) noexcept {
+  Swapchain(Swapchain &&rval) noexcept {
     copy(rval);
     move(std::move(rval));
     rval.nullify();
   }
 
-  auto operator=(VulkanSwapchain &&rval) noexcept -> VulkanSwapchain & {
+  auto operator=(Swapchain &&rval) noexcept -> Swapchain & {
     if (this != &rval) {
       copy(rval);
       move(std::move(rval));
@@ -85,7 +86,7 @@ public:
     return *this;
   }
 
-  ~VulkanSwapchain() noexcept {
+  ~Swapchain() noexcept {
     if (device != VK_NULL_HANDLE) {
       vkDestroySwapchainKHR(device, swapchain, alloc_callbacks);
       for (auto image : images) {
@@ -104,4 +105,5 @@ public:
 public:
   inline auto raw() -> VkSwapchainKHR & { return swapchain; }
 };
+}  // namespace vk
 }  // namespace mjt

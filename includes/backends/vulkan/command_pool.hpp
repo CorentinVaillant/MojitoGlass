@@ -8,6 +8,7 @@
 #include "helpers.hpp"
 
 namespace mjt {
+namespace vk {
 
 enum class CmdPoolCreateFlagBit : uint32_t {
   ///@brief specifies that command buffers allocated from the pool will be
@@ -32,7 +33,7 @@ using CmdPoolCreateFlags =
   EnumFlagsWrapper<VkCommandPoolCreateFlags, CmdPoolCreateFlagBit>;
 
 ///@brief A wrapper for a Vulkan Command Pool
-class VulkanCmdPool {
+class CmdPool {
 
   VkDevice device                            = VK_NULL_HANDLE;
   VkQueue queue                              = VK_NULL_HANDLE;
@@ -40,8 +41,8 @@ class VulkanCmdPool {
   VkCommandPool cmd_pool                     = VK_NULL_HANDLE;
 
   //== Contstructors ==//
-  NO_COPY(VulkanCmdPool);
-  VulkanCmdPool(
+  NO_COPY(CmdPool);
+  CmdPool(
     VkDevice device_,
     VkQueue queue_,
     VkCommandPool cmd_pool_,
@@ -55,19 +56,19 @@ public:
     VkQueue queue,
     const VkAllocationCallbacks *ptr_allocator,
     const VkCommandPoolCreateInfo *ptr_create_info)
-    -> VulkanResult<VulkanCmdPool> {
+    -> VulkanResult<CmdPool> {
     VkCommandPool cmd_pool;
     return VULKAN_RESULT(vkCreateCommandPool(
                            device, ptr_create_info, ptr_allocator, &cmd_pool))
-      .replace_ok(VulkanCmdPool(device, queue, cmd_pool, ptr_allocator));
+      .replace_ok(CmdPool(device, queue, cmd_pool, ptr_allocator));
   }
 
-  VulkanCmdPool(VulkanCmdPool &&rval) {
+  CmdPool(CmdPool &&rval) {
     copy(rval);
     rval.nullify();
   }
 
-  auto operator=(VulkanCmdPool &&rval) noexcept -> VulkanCmdPool & {
+  auto operator=(CmdPool &&rval) noexcept -> CmdPool & {
     if (this != &rval) {
       copy(rval);
       rval.nullify();
@@ -75,14 +76,14 @@ public:
     return *this;
   }
 
-  ~VulkanCmdPool() noexcept {
+  ~CmdPool() noexcept {
     if (device != VK_NULL_HANDLE)
       vkDestroyCommandPool(device, cmd_pool, ptr_allocator);
     nullify();
   }
 
 private:
-  auto copy(const VulkanCmdPool &other) noexcept -> void {
+  auto copy(const CmdPool &other) noexcept -> void {
     this->device        = other.device;
     this->queue         = other.queue;
     this->cmd_pool      = other.cmd_pool;
@@ -110,7 +111,7 @@ public:
                               : 0x0));
   }
 
-  auto create_cmd(bool primary = false) -> VulkanResult<VulkanCmd> {
+  auto create_cmd(bool primary = false) -> VulkanResult<CommandBuffer> {
     VkCommandBufferAllocateInfo alloc_info{
       .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
       .pNext              = nullptr,
@@ -120,9 +121,8 @@ public:
       .commandBufferCount = 1,
     };
 
-    return VulkanCmd::create(device, queue, cmd_pool, &alloc_info);
+    return CommandBuffer::create(device, queue, cmd_pool, &alloc_info);
   }
-
 };
-
+}  // namespace vk
 }  // namespace mjt

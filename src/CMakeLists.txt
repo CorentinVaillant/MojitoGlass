@@ -7,13 +7,6 @@ endif()
 set(CMAKE_CXX_FLAGS_DEBUG "-g -DVERBOSITY=DEBUG")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -DVERBOSITY=FATAL")
 
-
-#! not working don't know why !#
-if(${CMAKE_BUILD_TYPE} EQUAL Release)
-    set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS_RELEASE})
-else()
-    set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS_DEBUG})
-endif()
 message("Compiler flags : " ${CMAKE_CXX_FLAGS})
 
 add_library(MojitoGlass ${LIB_TYPE}

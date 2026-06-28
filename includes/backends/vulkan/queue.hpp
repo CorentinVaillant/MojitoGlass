@@ -11,31 +11,32 @@
 #include "helpers.hpp"
 
 namespace mjt {
+namespace vk {
 
-class VulkanQueuePool;
-class VulkanBackend;
+class QueuePool;
+class Backend;
 
 //===== QueueCapabilities =====//
 
 ///@brief reduce set of supported `VkQueueFlagBits` enumerations
-enum class VulkanQueueFlagBit : uint32_t {
+enum class QueueFlagBit : uint32_t {
   Graphics = VK_QUEUE_GRAPHICS_BIT,
   Compute  = VK_QUEUE_COMPUTE_BIT,
   Transfer = VK_QUEUE_TRANSFER_BIT,
 };
 
-using VulkanQueueFlags = EnumFlagsWrapper<VkQueueFlags, VulkanQueueFlagBit>;
+using QueueFlags = EnumFlagsWrapper<VkQueueFlags, QueueFlagBit>;
 
 struct QueueCapabilities {
-  VulkanQueueFlags flags;
+  QueueFlags flags;
   bool present;
 };
 
 //===== VulkanQueue =====//
 
-class VulkanQueue {
-  friend VulkanQueuePool;
-  friend VulkanBackend;
+class Queue {
+  friend QueuePool;
+  friend Backend;
   //== Attributs ==//
   VkDevice device                          = VK_NULL_HANDLE;
   const VkAllocationCallbacks *alloc_calls = nullptr;
@@ -45,7 +46,7 @@ class VulkanQueue {
   QueueCapabilities caps                   = {};
 
   //== Constructors ==//
-  VulkanQueue(
+  Queue(
     VkDevice device_,
     const VkAllocationCallbacks *allocator_callback,
     VkQueue q,
@@ -55,23 +56,23 @@ class VulkanQueue {
         family_idx(family), caps(c) {}
 
 public:
-  NO_COPY(VulkanQueue);
-  VulkanQueue(VulkanQueue &&) noexcept;
-  auto operator=(VulkanQueue &&) noexcept -> VulkanQueue &;
-  ~VulkanQueue() noexcept = default;  // This is not owned, the familly is
+  NO_COPY(Queue);
+  Queue(Queue &&) noexcept;
+  auto operator=(Queue &&) noexcept -> Queue &;
+  ~Queue() noexcept = default;  // This is not owned, the familly is
 private:
-  auto copy(const VulkanQueue &other) noexcept -> void;
+  auto copy(const Queue &other) noexcept -> void;
   auto nullify() noexcept -> void;
   //== Methods ==//
 public:
   auto present(
-    VulkanSwapchain &swapchain,
+    Swapchain &swapchain,
     uint32_t image_index,
-    VulkanSemaphore * = nullptr) -> VulkanResult<>;
+    Semaphore * = nullptr) -> VulkanResult<>;
   auto wait_idle() -> VulkanResult<>;
 
   auto create_cmd_pool(CmdPoolCreateFlags create_flags)
-    -> VulkanResult<VulkanCmdPool>;
+    -> VulkanResult<CmdPool>;
 
   // Getters
   inline uint32_t family_index() const { return family_idx; }
@@ -83,26 +84,26 @@ public:
 struct QueueFamily {
   uint32_t family_index;
   QueueCapabilities capabilities;
-  std::vector<VulkanQueue> queues;
+  std::vector<Queue> queues;
 };
-//===== VulkanQueuePool =====//
+//===== QueuePool =====//
 
-class VulkanQueuePool {
-  friend VulkanBackend;
+class QueuePool {
+  friend Backend;
   //== Inner types ==//
 private:
   struct Slot {
-    VulkanQueue *queue = nullptr;
+    Queue *queue = nullptr;
     bool in_use        = false;
   };
 
 public:
   class Handle {
-    friend VulkanQueuePool;
+    friend QueuePool;
     //= Attributs =//
   private:
-    VulkanQueue *queue    = nullptr;
-    VulkanQueuePool *pool = nullptr;
+    Queue *queue    = nullptr;
+    QueuePool *pool = nullptr;
     //= Constructors =//
   public:
     NO_COPY(Handle);
@@ -111,14 +112,14 @@ public:
     ~Handle();
 
   private:
-    Handle(VulkanQueue *q, VulkanQueuePool *p) : queue(q), pool(p) {}
+    Handle(Queue *q, QueuePool *p) : queue(q), pool(p) {}
 
     //= Getters =//
   public:
-    inline auto get() -> VulkanQueue & { return *queue; }
-    inline auto get() const -> const VulkanQueue & { return *queue; }
-    inline auto operator->() -> VulkanQueue * { return queue; }
-    inline auto operator->() const -> const VulkanQueue * { return queue; }
+    inline auto get() -> Queue & { return *queue; }
+    inline auto get() const -> const Queue & { return *queue; }
+    inline auto operator->() -> Queue * { return queue; }
+    inline auto operator->() const -> const Queue * { return queue; }
   };
   //==  Attributs ==//
 private:
@@ -130,38 +131,38 @@ private:
 
   //== Constructors ==//
 public:
-  NO_COPY(VulkanQueuePool);
-  VulkanQueuePool(VulkanQueuePool &&) noexcept = default;
-  auto operator=(VulkanQueuePool &&) noexcept -> VulkanQueuePool &;
+  NO_COPY(QueuePool);
+  QueuePool(QueuePool &&) noexcept = default;
+  auto operator=(QueuePool &&) noexcept -> QueuePool &;
 
-  ~VulkanQueuePool() = default;
+  ~QueuePool() = default;
 
 private:
-  VulkanQueuePool(std::vector<QueueFamily> &&fams);
+  QueuePool(std::vector<QueueFamily> &&fams);
   //== Methods ==//
 private:
-  auto release(VulkanQueue *q) -> void;
+  auto release(Queue *q) -> void;
 
 public:
   ///@brief acquire a queue with `required` capabilities.
   /// Will waits if all of the corresponding queues are already taken.
   ///@return `nullopt` if no such queue exist.
-  auto acquire(VulkanQueueFlags required, bool presentable = false)
+  auto acquire(QueueFlags required, bool presentable = false)
     -> std::optional<Handle>;
 
   ///@brief acquire a queue with `required` capabilities.
   ///@return `nullopt` if no such queue exist or if all the corresponding queue
   /// are taken.
-  auto try_acquire(VulkanQueueFlags required, bool presentable = false)
+  auto try_acquire(QueueFlags required, bool presentable = false)
     -> std::optional<Handle>;
 
   ///@brief return the dedicated family to a capability
   ///@return `nullopt` if the familly does not exist.
-  auto dedicated_family(VulkanQueueFlagBit cap) const
+  auto dedicated_family(QueueFlagBit cap) const
     -> std::optional<uint32_t>;
 
   ///@return all the familly indices present.
   auto all_family_indices() const -> std::vector<uint32_t>;
 };
-
+}
 };  // namespace mjt

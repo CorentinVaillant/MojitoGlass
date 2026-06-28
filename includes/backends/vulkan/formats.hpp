@@ -4,8 +4,9 @@
 #include <volk/volk.h>
 
 namespace mjt {
+namespace vk {
 
-enum class VulkanFormat : uint32_t {
+enum class Format : uint32_t {
   Undefined                = VK_FORMAT_UNDEFINED,
   R4G4UnormPACK8           = VK_FORMAT_R4G4_UNORM_PACK8,
   R4G4B4A4UnormPACK16      = VK_FORMAT_R4G4B4A4_UNORM_PACK16,
@@ -323,7 +324,7 @@ enum class VulkanFormat : uint32_t {
   A8Unorm = VK_FORMAT_A8_UNORM,
 };
 
-enum class VulkanColorSpace {
+enum class ColorSpace {
   SrgbNonlinear = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
   // Provided by VK_EXT_swapchain_colorspace
   DisplayP3Nonlinear = VK_COLOR_SPACE_DISPLAY_P3_NONLINEAR_EXT,
@@ -363,5 +364,5 @@ enum class VulkanColorSpace {
   // VK_COLOR_SPACE_DCI_P3_LINEAR_EXT is a legacy alias
   DciP3Linear = VK_COLOR_SPACE_DCI_P3_LINEAR_EXT,
 };
-
+}  // namespace vk
 }  // namespace mjt

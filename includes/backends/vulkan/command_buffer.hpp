@@ -9,9 +9,10 @@
 #include "helpers.hpp"
 
 namespace mjt {
+namespace vk {
 
 ///@brief a wrapper for VkCommandBuffer
-class VulkanCmd {
+class CommandBuffer {
 
   //== Attributs ==//
   VkDevice device        = VK_NULL_HANDLE;
@@ -20,7 +21,7 @@ class VulkanCmd {
   VkCommandBuffer cmd    = VK_NULL_HANDLE;
 
   //== Constructors ==//
-  VulkanCmd(
+  CommandBuffer(
     VkDevice device_,
     VkQueue queue_,
     VkCommandPool cmd_pool_,
@@ -28,25 +29,25 @@ class VulkanCmd {
       : device(device_), queue(queue_), cmd_pool(cmd_pool_), cmd(cmd_) {}
 
 public:
-  NO_COPY(VulkanCmd);
+  NO_COPY(CommandBuffer);
   static auto create(
     VkDevice device,
     VkQueue queue,
     VkCommandPool cmd_pool,
     const VkCommandBufferAllocateInfo *ptr_allocate_info)
-    -> VulkanResult<VulkanCmd> {
+    -> VulkanResult<CommandBuffer> {
     VkCommandBuffer cmd;
     return VULKAN_RESULT(
              vkAllocateCommandBuffers(device, ptr_allocate_info, &cmd))
-      .replace_ok(VulkanCmd(device, queue, cmd_pool, cmd));
+      .replace_ok(CommandBuffer(device, queue, cmd_pool, cmd));
   }
 
-  VulkanCmd(VulkanCmd &&rval) noexcept {
+  CommandBuffer(CommandBuffer &&rval) noexcept {
     copy(rval);
     rval.nullify();
   }
 
-  auto operator=(VulkanCmd &&rval) noexcept -> VulkanCmd & {
+  auto operator=(CommandBuffer &&rval) noexcept -> CommandBuffer & {
     if (this != &rval) {
       copy(rval);
       rval.nullify();
@@ -54,7 +55,7 @@ public:
     return *this;
   }
 
-  ~VulkanCmd() noexcept {
+  ~CommandBuffer() noexcept {
     //! Add verification pending state !//
     if (device != VK_NULL_HANDLE) {
       vkFreeCommandBuffers(device, cmd_pool, 1, &cmd);
@@ -69,7 +70,7 @@ private:
     cmd_pool = VK_NULL_HANDLE;
     cmd      = VK_NULL_HANDLE;
   }
-  auto copy(const VulkanCmd &other) noexcept -> void {
+  auto copy(const CommandBuffer &other) noexcept -> void {
     this->device   = other.device;
     this->queue    = other.queue;
     this->cmd_pool = other.cmd_pool;
@@ -107,10 +108,10 @@ public:
   auto end() { return VULKAN_RESULT(vkEndCommandBuffer(cmd)); }
 
   auto submit(
-    VulkanFence *signal_fence         = nullptr,
-    VulkanSemaphore *wait_semaphore   = nullptr,
-    VulkanSemaphore *signal_semaphore = nullptr,
-    VulkanPipelineStages wait_stages  = VulkanPipelineStage::TopOfPipe,
+    Fence *signal_fence         = nullptr,
+    Semaphore *wait_semaphore   = nullptr,
+    Semaphore *signal_semaphore = nullptr,
+    PipelineStages wait_stages  = PipelineStage::TopOfPipe,
     bool protected_submit             = false) -> VulkanResult<> {
 
     VkSemaphoreSubmitInfo wait_submit_info;
@@ -144,27 +145,27 @@ public:
       queue, 1, &info, signal_fence ? signal_fence->raw() : VK_NULL_HANDLE));
   }
 
-  auto submit(VulkanFence &signal_fence) { return submit(&signal_fence); }
+  auto submit(Fence &signal_fence) { return submit(&signal_fence); }
   auto submit(
-    VulkanFence &signal_fence,
-    VulkanSemaphore &wait_semaphore,
-    VulkanSemaphore &signal_semaphore) {
+    Fence &signal_fence,
+    Semaphore &wait_semaphore,
+    Semaphore &signal_semaphore) {
     return submit(&signal_fence, &wait_semaphore, &signal_semaphore);
   }
 };
 
-class VulkanBackend;
+class Backend;
 
 class ImediateCmd {
-  friend VulkanBackend;
+  friend Backend;
   //== Attributs ==//
-  VulkanCmd cmd;
-  VulkanFence fence;
+  CommandBuffer cmd;
+  Fence fence;
   ///@brief 1 minute
   static constexpr uint64_t DEFAULT_WAIT_TIME = 60'000'000'000;
 
   //== Constructors ==//
-  ImediateCmd(VulkanCmd &&cmd_, VulkanFence &&fence_)
+  ImediateCmd(CommandBuffer &&cmd_, Fence &&fence_)
       : cmd(std::move(cmd_)), fence(std::move(fence_)) {
     ASSERT_ERR(
       fence.signaled().unwrap() == false,
@@ -175,7 +176,7 @@ class ImediateCmd {
 public:
   template <typename U>
   auto submit(
-    std::function<U(VulkanCmd &cmd)> &&functor,
+    std::function<U(CommandBuffer &cmd)> &&functor,
     uint64_t fence_timeout = DEFAULT_WAIT_TIME) -> VulkanResult<U> {
     using Ret = VulkanResult<U>;
 
@@ -189,7 +190,7 @@ public:
     RET_IF_ERR(fence.reset());
     RET_IF_ERR(cmd.reset());
 
-    RET_IF_ERR(cmd.begin(VulkanCmd::BeginCmdUsageBit::OneTimeSubmitBit));
+    RET_IF_ERR(cmd.begin(CommandBuffer::BeginCmdUsageBit::OneTimeSubmitBit));
     auto res = functor(cmd);
     RET_IF_ERR(cmd.end());
 
@@ -200,8 +201,8 @@ public:
     return Ret::ok(std::move(res));
   }
 
-  auto submit(std::function<void(VulkanCmd &cmd)> &&functor) -> VulkanResult<> {
-    auto ret_func = [&functor](VulkanCmd &cmd) {
+  auto submit(std::function<void(CommandBuffer &cmd)> &&functor) -> VulkanResult<> {
+    auto ret_func = [&functor](CommandBuffer &cmd) {
       functor(cmd);
       return VulkanOk{};
     };
@@ -209,5 +210,5 @@ public:
     return submit<VulkanOk>(ret_func);
   }
 };
-
+}  // namespace vk
 }  // namespace mjt

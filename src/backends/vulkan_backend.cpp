@@ -10,6 +10,7 @@
 #include "common.hpp"
 
 namespace mjt {
+namespace vk {
 
 auto debug_callback(
   VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -44,12 +45,12 @@ auto debug_callback(
   return VK_TRUE;
 }
 
-auto VulkanBackend::create(VulkanBackendBuilder &builder, IVkSurface &surface)
-  -> Result<VulkanBackend, BackendCreationError> {
+auto Backend::create(BackendBuilder &builder, IVkSurface &surface)
+  -> Result<Backend, BackendCreationError> {
 
-  using Ret = Result<VulkanBackend, BackendCreationError>;
+  using Ret = Result<Backend, BackendCreationError>;
 
-  VulkanBackend result{};
+  Backend result{};
 
   auto error = result.init(builder, surface);
 
@@ -60,8 +61,8 @@ auto VulkanBackend::create(VulkanBackendBuilder &builder, IVkSurface &surface)
 }
 
 static bool volk_init = false;
-auto VulkanBackend::init(
-  VulkanBackendBuilder &builder,
+auto Backend::init(
+  BackendBuilder &builder,
   IVkSurface &surface_interface) -> std::optional<BackendCreationError> {
   nulled = false;
   LOG(INFO, "Init VkBackend");
@@ -240,7 +241,7 @@ auto VulkanBackend::init(
   return {};
 }
 
-auto VulkanBackend::init_queue_pool(
+auto Backend::init_queue_pool(
   // tuple : (index, count, properties)
   std::span<std::tuple<uint32_t, uint32_t, VkQueueFamilyProperties>>
     queue_families_props) -> VulkanResult<> {
@@ -279,7 +280,7 @@ auto VulkanBackend::init_queue_pool(
         continue;
       };
       family.queues.emplace_back(
-        VulkanQueue(device, allocator, vk_queue, fam_idx, family.capabilities));
+        Queue(device, allocator, vk_queue, fam_idx, family.capabilities));
     }
 
     if (!family.queues.empty())
@@ -287,13 +288,13 @@ auto VulkanBackend::init_queue_pool(
   }
 
   pool =
-    std::make_unique<VulkanQueuePool>(VulkanQueuePool(std::move(families)));
+    std::make_unique<QueuePool>(QueuePool(std::move(families)));
 
   return Ret::ok({});
 #undef RET_IF_ERR
 }
 
-auto VulkanBackend::copy(const VulkanBackend &other) noexcept -> void {
+auto Backend::copy(const Backend &other) noexcept -> void {
   nulled                     = other.nulled;
   instance                   = other.instance;
   debug_messenger            = other.debug_messenger;
@@ -306,18 +307,18 @@ auto VulkanBackend::copy(const VulkanBackend &other) noexcept -> void {
   vma_functions              = other.vma_functions;
 }
 
-auto VulkanBackend::move(VulkanBackend &other) noexcept -> void {
+auto Backend::move(Backend &other) noexcept -> void {
   surface_formats = std::move(other.surface_formats);
   pool            = std::move(other.pool);
 }
 
-VulkanBackend::VulkanBackend(VulkanBackend &&rval) noexcept {
+Backend::Backend(Backend &&rval) noexcept {
   copy(rval);
   move(rval);
   rval.nullify();
 }
-auto VulkanBackend::operator=(VulkanBackend &&rval) noexcept
-  -> VulkanBackend & {
+auto Backend::operator=(Backend &&rval) noexcept
+  -> Backend & {
   if (this != &rval) {
     copy(rval);
     move(rval);
@@ -327,7 +328,7 @@ auto VulkanBackend::operator=(VulkanBackend &&rval) noexcept
   return *this;
 }
 
-auto VulkanBackend::nullify() noexcept -> void {
+auto Backend::nullify() noexcept -> void {
   nulled                     = true;
   instance                   = VK_NULL_HANDLE;
   debug_messenger            = VK_NULL_HANDLE;
@@ -338,7 +339,7 @@ auto VulkanBackend::nullify() noexcept -> void {
   device                     = VK_NULL_HANDLE;
   pool                       = nullptr;
 }
-VulkanBackend::~VulkanBackend() noexcept {
+Backend::~Backend() noexcept {
   if (nulled)
     return;
 
@@ -358,8 +359,8 @@ VulkanBackend::~VulkanBackend() noexcept {
 
 // -- Memory allocator
 
-auto VulkanBackend::create_memory_allocator(AllocatorCreateFlags flags) const
-  -> VulkanResult<VulkanMemoryAllocator> {
+auto Backend::create_memory_allocator(AllocatorCreateFlags flags) const
+  -> VulkanResult<MemoryAllocator> {
   VmaAllocatorCreateInfo alloc_info{};
 
   alloc_info.flags                = flags.flags;
@@ -370,20 +371,20 @@ auto VulkanBackend::create_memory_allocator(AllocatorCreateFlags flags) const
   alloc_info.vulkanApiVersion     = api_version;
   alloc_info.pVulkanFunctions     = &vma_functions;
 
-  return VulkanMemoryAllocator::create(alloc_info);
+  return MemoryAllocator::create(alloc_info);
 }
 
 // -- Fence
 
-auto VulkanBackend::create_fence(bool signaled) const
-  -> VulkanResult<VulkanFence> {
+auto Backend::create_fence(bool signaled) const
+  -> VulkanResult<Fence> {
   VkFenceCreateInfo create_info{
     .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
     .pNext = nullptr,
     .flags = signaled ? VK_FENCE_CREATE_SIGNALED_BIT : 0x0u,
   };
 
-  return VulkanFence::create(device, &create_info, allocator);
+  return Fence::create(device, &create_info, allocator);
 }
-
+}  // namespace vk
 }  // namespace mjt

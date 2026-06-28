@@ -5,9 +5,10 @@
 #include <vulkan/vulkan_core.h>
 
 namespace mjt {
+namespace vk {
 
 // TODO
-class VulkanSemaphore {
+class Semaphore {
 protected:
   //== Attributs ==//
   VkDevice device                                  = VK_NULL_HANDLE;
@@ -15,7 +16,7 @@ protected:
   VkSemaphore semaphore                            = VK_NULL_HANDLE;
 
   //== Constructors ==//
-  VulkanSemaphore(
+  Semaphore(
     VkDevice device_,
     const VkAllocationCallbacks *allocator_callbacks_,
     VkSemaphore semaphore_)
@@ -23,24 +24,24 @@ protected:
         semaphore(semaphore_) {}
 
 public:
-  NO_COPY(VulkanSemaphore);
+  NO_COPY(Semaphore);
   static auto create(
     VkDevice device,
     const VkSemaphoreCreateInfo *info,
     const VkAllocationCallbacks *allocator_callbacks)
-    -> VulkanResult<VulkanSemaphore> {
+    -> VulkanResult<Semaphore> {
     VkSemaphore semaphore;
     return VULKAN_RESULT(
              vkCreateSemaphore(device, info, allocator_callbacks, &semaphore))
-      .replace_ok(VulkanSemaphore{device, allocator_callbacks, semaphore});
+      .replace_ok(Semaphore{device, allocator_callbacks, semaphore});
   }
 
-  VulkanSemaphore(VulkanSemaphore &&rval) noexcept {
+  Semaphore(Semaphore &&rval) noexcept {
     copy(rval);
     rval.nullify();
   }
 
-  auto operator=(VulkanSemaphore &&rval) noexcept -> VulkanSemaphore & {
+  auto operator=(Semaphore &&rval) noexcept -> Semaphore & {
     if (this != &rval) {
       copy(rval);
       rval.nullify();
@@ -48,7 +49,7 @@ public:
     return *this;
   }
 
-  ~VulkanSemaphore() noexcept {
+  ~Semaphore() noexcept {
     if (device != VK_NULL_HANDLE) {
       vkDestroySemaphore(device, semaphore, allocator_callbacks);
       nullify();
@@ -56,7 +57,7 @@ public:
   }
 
 protected:
-  auto copy(const VulkanSemaphore &other) noexcept -> void {
+  auto copy(const Semaphore &other) noexcept -> void {
     this->device              = other.device;
     this->allocator_callbacks = other.allocator_callbacks;
     this->semaphore           = other.semaphore;
@@ -73,7 +74,7 @@ protected:
 public:
   inline auto raw() -> VkSemaphore { return semaphore; };
 
-  static auto raw_span(std::span<VulkanSemaphore> semaphores) {
+  static auto raw_span(std::span<Semaphore> semaphores) {
     std::vector<VkSemaphore> result;
     for (auto &semaphore : semaphores)
       result.push_back(semaphore.semaphore);
@@ -95,17 +96,17 @@ public:
   }
 };
 
-class VulkanBinarySemaphore : public VulkanSemaphore {
-  VulkanBinarySemaphore(
+class BinarySemaphore : public Semaphore {
+  BinarySemaphore(
     VkDevice device_,
     const VkAllocationCallbacks *allocator_callbacks_,
     VkSemaphore semaphore_)
-      : VulkanSemaphore(device_, allocator_callbacks_, semaphore_) {}
+      : Semaphore(device_, allocator_callbacks_, semaphore_) {}
 
 public:
   static auto
   create(VkDevice device, const VkAllocationCallbacks *allocator_callbacks)
-    -> VulkanResult<VulkanBinarySemaphore> {
+    -> VulkanResult<BinarySemaphore> {
     VkSemaphoreCreateInfo info{
       .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
       .pNext = nullptr,
@@ -114,22 +115,22 @@ public:
     VkSemaphore sem;
     return VULKAN_RESULT(
              vkCreateSemaphore(device, &info, allocator_callbacks, &sem))
-      .replace_ok(VulkanBinarySemaphore{device, allocator_callbacks, sem});
+      .replace_ok(BinarySemaphore{device, allocator_callbacks, sem});
   }
 };
 
-class VulkanTimelineSemaphore : public VulkanSemaphore {
-  VulkanTimelineSemaphore(
+class TimelineSemaphore : public Semaphore {
+  TimelineSemaphore(
     VkDevice device_,
     const VkAllocationCallbacks *allocator_callbacks_,
     VkSemaphore semaphore_)
-      : VulkanSemaphore(device_, allocator_callbacks_, semaphore_) {}
+      : Semaphore(device_, allocator_callbacks_, semaphore_) {}
 
 public:
   static auto create(
     VkDevice device,
     const VkAllocationCallbacks *allocator_callbacks,
-    uint64_t initial_value) -> VulkanResult<VulkanTimelineSemaphore> {
+    uint64_t initial_value) -> VulkanResult<TimelineSemaphore> {
 
     VkSemaphoreTypeCreateInfo type_info{
       .sType         = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
@@ -146,7 +147,7 @@ public:
     VkSemaphore sem;
     return VULKAN_RESULT(
              vkCreateSemaphore(device, &info, allocator_callbacks, &sem))
-      .replace_ok(VulkanTimelineSemaphore{device, allocator_callbacks, sem});
+      .replace_ok(TimelineSemaphore{device, allocator_callbacks, sem});
   }
 
   auto signal(uint64_t value) {
@@ -194,5 +195,5 @@ public:
       .replace_ok(std::move(value));
   }
 };
-
+}
 }  // namespace mjt

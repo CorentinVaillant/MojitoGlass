@@ -5,8 +5,9 @@
 #include <volk/volk.h>
 
 namespace mjt {
+namespace vk {
 
-enum class VulkanImageUsageBit {
+enum class ImageUsageBit {
   TransferSrcBit            = VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
   TransferDstBit            = VK_IMAGE_USAGE_TRANSFER_DST_BIT,
   SampledBit                = VK_IMAGE_USAGE_SAMPLED_BIT,
@@ -59,7 +60,7 @@ enum class VulkanImageUsageBit {
   HostTransferBitExt = VK_IMAGE_USAGE_HOST_TRANSFER_BIT_EXT,
 };
 
-using VulkanImageUsage =
-  EnumFlagsWrapper<VkImageUsageFlags, VulkanImageUsageBit>;
-
+using ImageUsage =
+  EnumFlagsWrapper<VkImageUsageFlags, ImageUsageBit>;
+}
 }  // namespace mjt

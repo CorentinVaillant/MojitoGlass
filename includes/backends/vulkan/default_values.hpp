@@ -7,6 +7,7 @@
 #include "common.hpp"
 
 namespace mjt {
+namespace vk {
 
 // Features
 constexpr VkPhysicalDeviceVulkan11Features DEFAULT_PHYSICAL_DEVICE_11_FEATURES{
@@ -132,5 +133,5 @@ constexpr std::initializer_list<const char *> DEFAULT_INSTANCE_EXT{
   VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME,
   VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME,
 };
-
+}  // namespace vk
 }  // namespace mjt

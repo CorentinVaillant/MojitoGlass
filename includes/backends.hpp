@@ -26,7 +26,7 @@ struct BackendCreationError : public IError {
   };
 
   using InnerVariant = std::
-    variant<std::error_code, VkSurfaceError, VulkanError, NoInnerErrorVariant>;
+    variant<std::error_code, VkSurfaceError, vk::VulkanError, NoInnerErrorVariant>;
 
   BackendCreationError(ErrorType type_in, InnerVariant err_in)
       : type(type_in), error(err_in) {}
@@ -44,13 +44,13 @@ struct BackendCreationError : public IError {
     vulkan_failed_to_build_device,
     std::error_code);
   CREATE_BACK_CREATION_ERROR_CONSTR(surface_creation_error, VkSurfaceError);
-  CREATE_BACK_CREATION_ERROR_CONSTR(volk_initialization_error, VulkanError);
+  CREATE_BACK_CREATION_ERROR_CONSTR(volk_initialization_error, vk::VulkanError);
   CREATE_BACK_CREATION_ERROR_CONSTR(
     vulkan_failed_to_init_queue_pool,
-    VulkanError);
+    vk::VulkanError);
   CREATE_BACK_CREATION_ERROR_CONSTR(
     vulkan_failed_to_get_surface_capabilities,
-    VulkanError);
+    vk::VulkanError);
   CREATE_BACK_CREATION_ERROR_CONSTR(
     vulkan_no_queue_available,
     NoInnerErrorVariant);
@@ -85,6 +85,8 @@ struct BackendCreationError : public IError {
       case ErrorType::vulkan_no_queue_available:
         return "Vulkan, failed to find available queues.";
     }
+
+    return "Unknow Error";
   }
 };
 

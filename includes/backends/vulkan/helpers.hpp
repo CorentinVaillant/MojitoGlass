@@ -11,6 +11,7 @@
 #define STD140_ALIGNEMENT 16
 
 namespace mjt {
+namespace vk {
 
 static constexpr auto compressed_version_to_uvec4(uint32_t vk_version)
   -> U32Vec4 {
@@ -63,7 +64,7 @@ struct EnumFlagsWrapper {
   }
 };
 
-enum class VulkanPipelineStage : uint64_t {
+enum class PipelineStage : uint64_t {
   None         = VK_PIPELINE_STAGE_2_NONE,
   TopOfPipe    = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
   DrawIndirect = VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT,
@@ -95,8 +96,8 @@ enum class VulkanPipelineStage : uint64_t {
 
 };
 
-using VulkanPipelineStages =
-  EnumFlagsWrapper<VkPipelineStageFlags2, VulkanPipelineStage>;
+using PipelineStages =
+  EnumFlagsWrapper<VkPipelineStageFlags2, PipelineStage>;
 
 static constexpr auto extent_to_vec(const VkExtent2D &v) {
   return U32Vec2(v.width, v.height);
@@ -145,5 +146,5 @@ auto static inline make_vulkan_result(
 }
 
 #define VULKAN_RESULT(x) make_vulkan_result(x, #x)
-
+}  // namespace vk
 }  // namespace mjt

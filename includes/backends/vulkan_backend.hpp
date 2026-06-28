@@ -20,10 +20,11 @@
 #include "vulkan/backend_builder.hpp"
 
 namespace mjt {
+namespace vk {
 
 // ===== VulkanBackend ===== //
 
-class VulkanBackend {
+class Backend {
   //== Attributs ==//
   bool nulled = true;  // Set to true if the backend is not valid
   static constexpr VkAllocationCallbacks *allocator =
@@ -44,27 +45,27 @@ class VulkanBackend {
 
   VmaVulkanFunctions vma_functions                      = {};
 
-  std::unique_ptr<VulkanQueuePool> pool                 = nullptr;
+  std::unique_ptr<QueuePool> pool                 = nullptr;
 
   //== Constructors ==//
-  VulkanBackend() = default;
-  NO_COPY(VulkanBackend);
+  Backend() = default;
+  NO_COPY(Backend);
 
   void nullify() noexcept;
-  auto copy(const VulkanBackend &other) noexcept -> void;
-  auto move(VulkanBackend &other) noexcept -> void;
+  auto copy(const Backend &other) noexcept -> void;
+  auto move(Backend &other) noexcept -> void;
 
 public:
-  VulkanBackend(VulkanBackend &&rval) noexcept;
-  auto operator=(VulkanBackend &&rval) noexcept -> VulkanBackend &;
+  Backend(Backend &&rval) noexcept;
+  auto operator=(Backend &&rval) noexcept -> Backend &;
 
-  static auto create(VulkanBackendBuilder &builder, IVkSurface &surface)
-    -> Result<VulkanBackend, BackendCreationError>;
+  static auto create(BackendBuilder &builder, IVkSurface &surface)
+    -> Result<Backend, BackendCreationError>;
 
-  ~VulkanBackend() noexcept;
+  ~Backend() noexcept;
 
 private:
-  auto init(VulkanBackendBuilder &builder, IVkSurface &surface)
+  auto init(BackendBuilder &builder, IVkSurface &surface)
     -> std::optional<BackendCreationError>;
 
   // tuple : (index, count, properties)
@@ -76,7 +77,7 @@ private:
 public:
   ///@brief
   auto get_info() const {
-    auto result = VulkanBackendInfos{
+    auto result = BackendInfos{
       .apiVersion    = api_version,
       .driverVersion = physical_device_properties.driverVersion,
       .vendorID      = physical_device_properties.vendorID,
@@ -109,26 +110,26 @@ public:
 
     for (auto &format : surface_formats)
       result.supported_format.emplace_back(
-        std::pair<VulkanFormat, VulkanColorSpace>{
-          VulkanFormat(format.surfaceFormat.format),
-          VulkanColorSpace(format.surfaceFormat.colorSpace)});
+        std::pair<Format, ColorSpace>{
+          Format(format.surfaceFormat.format),
+          ColorSpace(format.surfaceFormat.colorSpace)});
 
     return result;
   }
 
   // -- Queue pool
-  auto queue_pool() -> VulkanQueuePool & { return *pool; }
-  auto queue_pool() const -> const VulkanQueuePool & { return *pool; }
+  auto queue_pool() -> QueuePool & { return *pool; }
+  auto queue_pool() const -> const QueuePool & { return *pool; }
 
   // -- Memory allocator
   auto create_memory_allocator(AllocatorCreateFlags flags) const
-    -> VulkanResult<VulkanMemoryAllocator>;
+    -> VulkanResult<MemoryAllocator>;
 
   // -- Fence
-  auto create_fence(bool signaled = false) const -> VulkanResult<VulkanFence>;
+  auto create_fence(bool signaled = false) const -> VulkanResult<Fence>;
 
   // -- Cmd
-  auto create_imediate_cmd(VulkanCmdPool &pool) -> VulkanResult<ImediateCmd> {
+  auto create_imediate_cmd(CmdPool &pool) -> VulkanResult<ImediateCmd> {
     auto fence_ret = create_fence();
     if (!fence_ret)
       return VulkanResult<ImediateCmd>::err(fence_ret.unwrap_err());
@@ -141,19 +142,19 @@ public:
   }
 
   // -- Semaphore
-  auto create_binary_semaphore() -> VulkanResult<VulkanBinarySemaphore> {
-    return VulkanBinarySemaphore::create(device, allocator);
+  auto create_binary_semaphore() -> VulkanResult<BinarySemaphore> {
+    return BinarySemaphore::create(device, allocator);
   }
   auto create_timeline_semaphore(uint64_t initial_value)
-    -> VulkanResult<VulkanTimelineSemaphore> {
-    return VulkanTimelineSemaphore::create(device, allocator, initial_value);
+    -> VulkanResult<TimelineSemaphore> {
+    return TimelineSemaphore::create(device, allocator, initial_value);
   }
 
   // -- Swapchain
-  auto create_swapchain_builder() -> VulkanSwapchainBuilder {
-    return VulkanSwapchainBuilder(
+  auto create_swapchain_builder() -> SwapchainBuilder {
+    return SwapchainBuilder(
       device, surface, allocator, surface_caps, surface_formats);
   }
 };
-
+}  // namespace vk
 }  // namespace mjt

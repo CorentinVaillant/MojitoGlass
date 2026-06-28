@@ -7,17 +7,18 @@
 #include <utility>
 
 namespace mjt {
+namespace vk {
 
 //===== VulkanQueue =====//
 
 //== Constructors ==//
 
-VulkanQueue::VulkanQueue(VulkanQueue &&rval) noexcept {
+Queue::Queue(Queue &&rval) noexcept {
   copy(rval);
   rval.nullify();
 }
 
-auto VulkanQueue::operator=(VulkanQueue &&rval) noexcept -> VulkanQueue & {
+auto Queue::operator=(Queue &&rval) noexcept -> Queue & {
   if (this != &rval) {
     copy(rval);
     rval.nullify();
@@ -25,7 +26,7 @@ auto VulkanQueue::operator=(VulkanQueue &&rval) noexcept -> VulkanQueue & {
   return *this;
 }
 
-auto VulkanQueue::copy(const VulkanQueue &other) noexcept -> void {
+auto Queue::copy(const Queue &other) noexcept -> void {
   this->device      = other.device;
   this->alloc_calls = other.alloc_calls;
   this->queue       = other.queue;
@@ -33,7 +34,7 @@ auto VulkanQueue::copy(const VulkanQueue &other) noexcept -> void {
   this->caps        = other.caps;
 }
 
-auto VulkanQueue::nullify() noexcept -> void {
+auto Queue::nullify() noexcept -> void {
   device      = VK_NULL_HANDLE;
   alloc_calls = nullptr;
   queue       = VK_NULL_HANDLE;
@@ -43,10 +44,10 @@ auto VulkanQueue::nullify() noexcept -> void {
 
 //== Methods ==//
 
-auto VulkanQueue::present(
-  VulkanSwapchain &swapchain,
+auto Queue::present(
+  Swapchain &swapchain,
   uint32_t image_index,
-  VulkanSemaphore *semaphore) -> VulkanResult<> {
+  Semaphore *semaphore) -> VulkanResult<> {
 
   // VkResult *results                  = new VkResult[SWAPCHAIN_COUNT];
   VkResult result;
@@ -68,12 +69,12 @@ auto VulkanQueue::present(
   return present_result;
 }
 
-auto VulkanQueue::wait_idle() -> VulkanResult<> {
+auto Queue::wait_idle() -> VulkanResult<> {
   return VULKAN_RESULT(vkQueueWaitIdle(queue));
 }
 
-auto VulkanQueue::create_cmd_pool(CmdPoolCreateFlags create_flags)
-  -> VulkanResult<VulkanCmdPool> {
+auto Queue::create_cmd_pool(CmdPoolCreateFlags create_flags)
+  -> VulkanResult<CmdPool> {
 
   VkCommandPoolCreateInfo create_info{
     .sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
@@ -82,19 +83,19 @@ auto VulkanQueue::create_cmd_pool(CmdPoolCreateFlags create_flags)
     .queueFamilyIndex = family_idx,
   };
 
-  return VulkanCmdPool::create(device, queue, alloc_calls, &create_info);
+  return CmdPool::create(device, queue, alloc_calls, &create_info);
 }
 
 //===== VulkanQueuePool =====//
 
 //== Constructors ==//
-VulkanQueuePool::Handle::Handle(Handle &&rval) noexcept
+QueuePool::Handle::Handle(Handle &&rval) noexcept
     : queue(rval.queue), pool(rval.pool) {
   rval.queue = nullptr;
   rval.pool  = nullptr;
 }
 
-auto VulkanQueuePool::Handle::operator=(Handle &&rval) noexcept -> Handle & {
+auto QueuePool::Handle::operator=(Handle &&rval) noexcept -> Handle & {
   if (this != &rval) {
     this->pool  = rval.pool;
     this->queue = rval.queue;
@@ -105,13 +106,13 @@ auto VulkanQueuePool::Handle::operator=(Handle &&rval) noexcept -> Handle & {
   return *this;
 }
 
-VulkanQueuePool::Handle::~Handle() {
+QueuePool::Handle::~Handle() {
   if (queue && pool)
     pool->release(queue);
 }
 
-auto VulkanQueuePool::operator=(VulkanQueuePool &&rval) noexcept
-  -> VulkanQueuePool & {
+auto QueuePool::operator=(QueuePool &&rval) noexcept
+  -> QueuePool & {
   if (this != &rval) {
     this->families = std::move(rval.families);
     this->slots    = std::move(rval.slots);
@@ -120,7 +121,7 @@ auto VulkanQueuePool::operator=(VulkanQueuePool &&rval) noexcept
   return *this;
 }
 
-VulkanQueuePool::VulkanQueuePool(std::vector<QueueFamily> &&fams)
+QueuePool::QueuePool(std::vector<QueueFamily> &&fams)
     : families(std::move(fams)), mutex(std::make_unique<std::mutex>()) {
   for (auto &family : families) {
     for (auto &queue : family.queues)
@@ -129,7 +130,7 @@ VulkanQueuePool::VulkanQueuePool(std::vector<QueueFamily> &&fams)
 }
 
 //== Methods ==//
-auto VulkanQueuePool::release(VulkanQueue *q) -> void {
+auto QueuePool::release(Queue *q) -> void {
   {
     std::unique_lock lock(*mutex);
     for (auto &slot : slots) {
@@ -142,7 +143,7 @@ auto VulkanQueuePool::release(VulkanQueue *q) -> void {
   cv->notify_one();
 }
 
-auto VulkanQueuePool::acquire(VulkanQueueFlags required, bool presentable)
+auto QueuePool::acquire(QueueFlags required, bool presentable)
   -> std::optional<Handle> {
   bool exist = false;
   for (auto &slot : slots) {
@@ -186,7 +187,7 @@ auto VulkanQueuePool::acquire(VulkanQueueFlags required, bool presentable)
   return std::nullopt;
 }
 
-auto VulkanQueuePool::try_acquire(VulkanQueueFlags required, bool presentable)
+auto QueuePool::try_acquire(QueueFlags required, bool presentable)
   -> std::optional<Handle> {
   std::unique_lock lock(*mutex);
   for (auto &slot : slots) {
@@ -203,7 +204,7 @@ auto VulkanQueuePool::try_acquire(VulkanQueueFlags required, bool presentable)
   return std::nullopt;
 }
 
-auto VulkanQueuePool::dedicated_family(VulkanQueueFlagBit cap) const
+auto QueuePool::dedicated_family(QueueFlagBit cap) const
   -> std::optional<uint32_t> {
   const uint32_t cap_bit = static_cast<uint32_t>(cap);
 
@@ -217,7 +218,7 @@ auto VulkanQueuePool::dedicated_family(VulkanQueueFlagBit cap) const
   return std::nullopt;
 }
 
-auto VulkanQueuePool::all_family_indices() const -> std::vector<uint32_t> {
+auto QueuePool::all_family_indices() const -> std::vector<uint32_t> {
   std::vector<uint32_t> result;
   result.reserve(families.size());
   for (auto &f : families) {
@@ -225,5 +226,5 @@ auto VulkanQueuePool::all_family_indices() const -> std::vector<uint32_t> {
   }
   return result;
 }
-
+}
 }  // namespace mjt

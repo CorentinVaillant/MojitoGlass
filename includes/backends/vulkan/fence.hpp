@@ -7,17 +7,18 @@
 #include "helpers.hpp"
 
 namespace mjt {
+namespace vk {
 
-class VulkanFence {
+class Fence {
   //== Attributs ==//
   VkDevice device                        = VK_NULL_HANDLE;
   const VkAllocationCallbacks *ptr_alloc = VK_NULL_HANDLE;
   VkFence fence                          = VK_NULL_HANDLE;
 
   //== Contructors ==//
-  NO_COPY(VulkanFence);
+  NO_COPY(Fence);
 
-  VulkanFence(
+  Fence(
     VkDevice device_,
     const VkAllocationCallbacks *ptr_alloc_,
     VkFence fence_)
@@ -27,18 +28,18 @@ public:
   static auto create(
     VkDevice device,
     const VkFenceCreateInfo *create_info,
-    const VkAllocationCallbacks *allocator) -> VulkanResult<VulkanFence> {
+    const VkAllocationCallbacks *allocator) -> VulkanResult<Fence> {
     VkFence fence;
     return VULKAN_RESULT(vkCreateFence(device, create_info, allocator, &fence))
-      .replace_ok(VulkanFence(device, allocator, fence));
+      .replace_ok(Fence(device, allocator, fence));
   }
 
-  VulkanFence(VulkanFence &&rval) noexcept {
+  Fence(Fence &&rval) noexcept {
     copy(rval);
     rval.nullify();
   }
 
-  auto operator=(VulkanFence &&rval) noexcept -> VulkanFence & {
+  auto operator=(Fence &&rval) noexcept -> Fence & {
     if (this != &rval) {
       copy(rval);
       rval.nullify();
@@ -46,7 +47,7 @@ public:
     return *this;
   }
 
-  ~VulkanFence() noexcept {
+  ~Fence() noexcept {
     if (device) {
       vkDestroyFence(device, fence, ptr_alloc);
       nullify();
@@ -60,7 +61,7 @@ private:
   }
 
   //== Methods ==//
-  auto copy(const VulkanFence &other) noexcept -> void {
+  auto copy(const Fence &other) noexcept -> void {
     this->fence     = other.fence;
     this->device    = other.device;
     this->ptr_alloc = other.ptr_alloc;
@@ -113,11 +114,12 @@ public:
 
   inline auto raw() { return fence; };
 
-  static auto raw_span(std::span<VulkanFence> fences) {
+  static auto raw_span(std::span<Fence> fences) {
     std::vector<VkFence> result;
     for (auto &fence : fences)
       result.push_back(fence.fence);
     return result;
   }
 };
+}  // namespace vk
 }  // namespace mjt

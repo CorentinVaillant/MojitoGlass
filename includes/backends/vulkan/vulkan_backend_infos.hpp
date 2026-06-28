@@ -10,6 +10,7 @@
 #include "common.hpp"
 
 namespace mjt {
+namespace vk {
 
 enum class PhysicalDeviceType {
   Other         = VK_PHYSICAL_DEVICE_TYPE_OTHER,
@@ -20,7 +21,7 @@ enum class PhysicalDeviceType {
 };
 
 //@brief Todo
-struct VulkanBackendInfos {
+struct BackendInfos {
   // Physical device properties
   uint32_t apiVersion;
   uint32_t driverVersion;
@@ -42,9 +43,9 @@ struct VulkanBackendInfos {
   SurfaceTransform supported_transforms;
   SurfaceTransform current_transform;
   CompositeAlpha supported_composite_alpha;
-  VulkanImageUsage supported_usage_flags;
+  ImageUsage supported_usage_flags;
 
-  std::vector<std::pair<VulkanFormat, VulkanColorSpace>> supported_format;
+  std::vector<std::pair<Format, ColorSpace>> supported_format;
 };
-
+}  // namespace vk
 }  // namespace mjt

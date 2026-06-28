@@ -12,8 +12,9 @@
 #include "./swapchain.hpp"
 
 namespace mjt {
+namespace vk {
 
-class VulkanBackend;
+class Backend;
 
 enum class SwapchainCreateFlagBit {
   // Provided by VK_VERSION_1_1 with VK_KHR_swapchain, VK_KHR_device_group with
@@ -85,8 +86,8 @@ enum class PresentMode {
 };
 
 //@brief TODO
-class VulkanSwapchainBuilder {
-  friend VulkanBackend;
+class SwapchainBuilder {
+  friend Backend;
 
   static constexpr VkSwapchainCreateInfoKHR DEFAULT_CREATE_INFOS{
     .sType                 = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
@@ -119,7 +120,7 @@ class VulkanSwapchainBuilder {
   uint32_t surface_caps_min_image_count            = 0;
 
   //== Constructors ==//
-  VulkanSwapchainBuilder(
+  SwapchainBuilder(
     VkDevice device_,
     VkSurfaceKHR surface,
     const VkAllocationCallbacks *allocator_callbacks_,
@@ -135,9 +136,9 @@ class VulkanSwapchainBuilder {
   }
 
 public:
-  NO_COPY(VulkanSwapchainBuilder);
-  VulkanSwapchainBuilder(VulkanSwapchainBuilder &&)            = default;
-  VulkanSwapchainBuilder &operator=(VulkanSwapchainBuilder &&) = default;
+  NO_COPY(SwapchainBuilder);
+  SwapchainBuilder(SwapchainBuilder &&)            = default;
+  SwapchainBuilder &operator=(SwapchainBuilder &&) = default;
 
   //== Methods ==//
   auto reset_to_default() -> void {
@@ -147,12 +148,12 @@ public:
     this->infos.surface = surface;
   }
 
-  auto set_create_flags(SwapchainCreateFlags flag) -> VulkanSwapchainBuilder & {
+  auto set_create_flags(SwapchainCreateFlags flag) -> SwapchainBuilder & {
     infos.flags = flag.flags;
     return *this;
   }
   auto get_min_image_count() -> uint32_t { return infos.minImageCount; }
-  auto set_min_image_count(uint32_t count) -> VulkanSwapchainBuilder & {
+  auto set_min_image_count(uint32_t count) -> SwapchainBuilder & {
     ASSERT_ERR(
       count >= surface_caps_min_image_count,
       "Should be greater than VkSurfaceCapabilitiesKHR::minImageCount ({})",
@@ -160,71 +161,71 @@ public:
     infos.minImageCount = count;
     return *this;
   }
-  auto set_image_format(VulkanFormat format) -> VulkanSwapchainBuilder & {
+  auto set_image_format(Format format) -> SwapchainBuilder & {
     infos.imageFormat = static_cast<VkFormat>(format);
     return *this;
   }
-  auto set_image_color_space(VulkanColorSpace color_space)
-    -> VulkanSwapchainBuilder & {
+  auto set_image_color_space(ColorSpace color_space)
+    -> SwapchainBuilder & {
     infos.imageColorSpace = static_cast<VkColorSpaceKHR>(color_space);
     return *this;
   }
   auto set_image_extent(uint32_t width, uint32_t height)
-    -> VulkanSwapchainBuilder & {
+    -> SwapchainBuilder & {
     infos.imageExtent.width  = width;
     infos.imageExtent.height = height;
     return *this;
   }
-  auto set_image_extent(U32Vec2 size) -> VulkanSwapchainBuilder & {
+  auto set_image_extent(U32Vec2 size) -> SwapchainBuilder & {
     infos.imageExtent.width  = size.x;
     infos.imageExtent.height = size.y;
     return *this;
   }
-  auto set_image_array_layers(uint32_t layers) -> VulkanSwapchainBuilder & {
+  auto set_image_array_layers(uint32_t layers) -> SwapchainBuilder & {
     infos.imageArrayLayers = layers;
     return *this;
   }
-  auto set_image_usage(VulkanImageUsage usages) -> VulkanSwapchainBuilder & {
+  auto set_image_usage(ImageUsage usages) -> SwapchainBuilder & {
     infos.imageUsage = usages.flags;
     return *this;
   }
-  auto set_sharing_exclusive() -> VulkanSwapchainBuilder & {
+  auto set_sharing_exclusive() -> SwapchainBuilder & {
     infos.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
     return *this;
   }
-  auto set_sharing_concurent() -> VulkanSwapchainBuilder & {
+  auto set_sharing_concurent() -> SwapchainBuilder & {
     infos.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
     return *this;
   }
-  auto add_queue_family(const QueueFamily &q_fam) -> VulkanSwapchainBuilder & {
+  auto add_queue_family(const QueueFamily &q_fam) -> SwapchainBuilder & {
     queue_families.push_back(q_fam.family_index);
     return *this;
   }
-  auto clear_queue_family() -> VulkanSwapchainBuilder & {
+  auto clear_queue_family() -> SwapchainBuilder & {
     queue_families.clear();
     return *this;
   }
   auto set_surface_transform(SurfaceTransformBit transform)
-    -> VulkanSwapchainBuilder & {
+    -> SwapchainBuilder & {
     infos.preTransform = static_cast<VkSurfaceTransformFlagBitsKHR>(transform);
     return *this;
   }
   auto set_composite_alpha(CompositeAlphaFlagBits value)
-    -> VulkanSwapchainBuilder & {
+    -> SwapchainBuilder & {
     infos.compositeAlpha = static_cast<VkCompositeAlphaFlagBitsKHR>(value);
     return *this;
   }
-  auto set_present_mode(PresentMode value) -> VulkanSwapchainBuilder & {
+  auto set_present_mode(PresentMode value) -> SwapchainBuilder & {
     infos.presentMode = static_cast<VkPresentModeKHR>(value);
     return *this;
   }
-  auto set_clipped(bool clipped = true) -> VulkanSwapchainBuilder & {
+  auto set_clipped(bool clipped = true) -> SwapchainBuilder & {
     infos.clipped = clipped ? VK_TRUE : VK_FALSE;
     return *this;
   }
 
-  auto build() -> VulkanResult<VulkanSwapchain> {
-    using Ret                   = VulkanResult<VulkanSwapchain>;
+  auto build() -> VulkanResult<Swapchain> {
+    using Ret                   = VulkanResult<Swapchain>;
 
     infos.queueFamilyIndexCount = queue_families.size();
     infos.pQueueFamilyIndices   = queue_families.data();
@@ -247,7 +248,7 @@ public:
     }
 
     std::vector<VkImage> vk_images{image_count, VK_NULL_HANDLE};
-    std::vector<VulkanSwapchain::SwapchainImage> images;
+    std::vector<Swapchain::SwapchainImage> images;
     images.reserve(image_count);
 
     swapchain_img_result = VULKAN_RESULT(vkGetSwapchainImagesKHR(
@@ -334,7 +335,7 @@ public:
       return Ret::err(fence_result.unwrap_err());
     }
 
-    return Ret::ok(VulkanSwapchain(
+    return Ret::ok(Swapchain(
       device,
       swapchain,
       allocator_callbacks,
@@ -349,7 +350,7 @@ private:
     VkSwapchainKHR swapchain,
     [[maybe_unused]] std::span<VkImage> vk_images =
       {},  //> VkImages are destroyed by vkDestroySwapchainKHR
-    std::span<VulkanSwapchain::SwapchainImage> images = {},
+    std::span<Swapchain::SwapchainImage> images = {},
     VkSemaphore image_available = VK_NULL_HANDLE) -> void {
 
     if (image_available != VK_NULL_HANDLE)
@@ -378,5 +379,5 @@ private:
     vkDestroySwapchainKHR(device, swapchain, allocator_callbacks);
   }
 };
-
+}  // namespace vk
 }  // namespace mjt

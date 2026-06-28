@@ -5,6 +5,7 @@
 #include <vulkan/vk_enum_string_helper.h>
 
 #include "common.hpp"
+#include "math/vec2.hpp"
 #include "math/vec4.hpp"
 
 #define STD140_ALIGNEMENT 16
@@ -40,7 +41,8 @@ struct EnumFlagsWrapper {
     }
   }
 
-  constexpr EnumFlagsWrapper(FlagBit flag) : flags((static_cast<Flag>(flag))) {}
+  constexpr EnumFlagsWrapper(FlagBit flag) : flags(static_cast<Flag>(flag)) {}
+  constexpr EnumFlagsWrapper(Flag flag) : flags(flag) {}
 
   constexpr auto operator|=(FlagBit bit) -> EnumFlagsWrapper & {
     flags |= static_cast<Flag>(bit);
@@ -95,6 +97,10 @@ enum class VulkanPipelineStage : uint64_t {
 
 using VulkanPipelineStages =
   EnumFlagsWrapper<VkPipelineStageFlags2, VulkanPipelineStage>;
+
+static constexpr auto extent_to_vec(const VkExtent2D &v) {
+  return U32Vec2(v.width, v.height);
+}
 
 struct VulkanOk final {};
 

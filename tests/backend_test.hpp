@@ -4,8 +4,11 @@
 #include "backends/vulkan/command_buffer.hpp"
 #include "backends/vulkan/command_pool.hpp"
 #include "backends/vulkan/fence.hpp"
+#include "backends/vulkan/images_usages.hpp"
 #include "backends/vulkan/queue.hpp"
 #include "backends/vulkan/semaphore.hpp"
+#include "backends/vulkan/swapchain.hpp"
+#include "backends/vulkan/swapchain_builder.hpp"
 #include "backends/vulkan_backend.hpp"
 #include "common.hpp"
 #include "surface/sdl_surface.hpp"
@@ -31,6 +34,8 @@ TEST_CASE("VkBackend") {
 
   auto backend = std::move(backend_result.unwrap());
 
+  auto infos   = backend.get_info();
+
   SUBCASE("Double VkBackend creation") {
     auto backend_result2 = VulkanBackend::create(builder, surface);
     CHECK_MESSAGE(
@@ -39,7 +44,6 @@ TEST_CASE("VkBackend") {
       backend_result2.unwrap_err().to_string());
     VulkanBackend backend2 = std::move(backend_result2.unwrap());
   }
-
   SUBCASE("Mem Allocator creation + destruction") {
 
     AllocatorCreateFlags flags = {AllocatorCreateBit::ExternallySynchronized};
@@ -217,6 +221,22 @@ TEST_CASE("VkBackend") {
             }
           })
           .unwrap();
+      }
+    }
+
+    SUBCASE("Swapchain") {
+      VulkanSwapchainBuilder builder = backend.create_swapchain_builder();
+
+      builder.set_image_usage(VulkanImageUsageBit::ColorAttachmentBit);
+
+      for (auto &[format, color_space] : infos.supported_format) {
+        builder.set_image_format(format);
+        builder.set_image_color_space(color_space);
+        for (int i = infos.min_image_count; i < infos.max_image_count; i++) {
+          builder.set_min_image_count(i);
+
+          VulkanSwapchain swapchain = builder.build().unwrap();
+        }
       }
     }
   }

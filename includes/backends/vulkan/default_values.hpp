@@ -1,5 +1,6 @@
 #pragma once
 
+#include <initializer_list>
 #define VK_NO_PROTOTYPES
 #include <volk/volk.h>
 
@@ -122,7 +123,14 @@ constexpr VkPhysicalDeviceVulkan14Features DEFAULT_PHYSICAL_DEVICE_14_FEATURES{
 };
 
 // Extensions
-constexpr std::initializer_list<const char *> DEFAULT_EXTENSIONS{
-  VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME};
+constexpr std::initializer_list<const char *> DEFAULT_DEVICE_EXT{
+  VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME,
+  VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+};
+
+constexpr std::initializer_list<const char *> DEFAULT_INSTANCE_EXT{
+  VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME,
+  VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME,
+};
 
 }  // namespace mjt

@@ -14,7 +14,7 @@ constexpr bool DEFAULT_VALIDATION_LAYER =
 #endif
 
 //===== DeviceExtensions =====//
-struct VulkanDeviceExtensions {
+struct VulkanDeviceFeatures {
 
   VkPhysicalDeviceAccelerationStructureFeaturesKHR acc_struct_features{
     .sType =
@@ -39,14 +39,14 @@ struct VulkanDeviceExtensions {
   };
   // TODO add all the required features
 
-  VulkanDeviceExtensions() { chain(); }
+  VulkanDeviceFeatures() { chain(); }
 
-  VulkanDeviceExtensions(const VulkanDeviceExtensions &other) {
+  VulkanDeviceFeatures(const VulkanDeviceFeatures &other) {
     memcpy((void *)this, &other, sizeof(other));
     chain();
   }
 
-  VulkanDeviceExtensions &operator=(const VulkanDeviceExtensions &other) {
+  VulkanDeviceFeatures &operator=(const VulkanDeviceFeatures &other) {
     if (this != &other) {
       memcpy((void *)this, &other, sizeof(other));
       chain();
@@ -115,9 +115,10 @@ struct VulkanBackendBuilder {
   VkPhysicalDeviceVulkan14Features physical_device_Vk14_feature =
     DEFAULT_PHYSICAL_DEVICE_14_FEATURES;
 
-  std::vector<const char *> extensions = DEFAULT_EXTENSIONS;
+  std::vector<const char *> devices_extensions = DEFAULT_DEVICE_EXT;
+  std::vector<const char *> instance_extensions = DEFAULT_INSTANCE_EXT;
 
-  VulkanDeviceExtensions device_extensions;
+  VulkanDeviceFeatures device_features;
 
   std::vector<VulkanQueueRequest> queue_request = {
     {{VulkanQueueFlagBit::Graphics, true}, 1},

@@ -79,6 +79,8 @@ auto VulkanBackend::init(
   auto inst_ret =
     inst_builder.set_app_name(builder.app_name.c_str())
       .request_validation_layers(builder.use_validation_layer)
+      .set_engine_name("Mojito Engine")
+      .enable_extensions(builder.instance_extensions)
       .set_debug_callback(debug_callback)
       .require_api_version(VK_MAKE_API_VERSION(
         0, builder.minimum_version.x, builder.minimum_version.y, 0))
@@ -120,7 +122,7 @@ auto VulkanBackend::init(
       .set_required_features_12(builder.physical_device_Vk12_feature)
       .set_required_features_13(builder.physical_device_Vk13_feature)
       .set_required_features_14(builder.physical_device_Vk14_feature)
-      .add_required_extensions(builder.extensions)
+      .add_required_extensions(builder.devices_extensions)
       .set_surface(surface)
       .select();
 
@@ -135,11 +137,11 @@ auto VulkanBackend::init(
   physical_device_properties = selector_ret.value().properties;
 
   // Enableling extensions
-  selector_ret.value().enable_extensions_if_present(builder.extensions);
+  selector_ret.value().enable_extensions_if_present(builder.devices_extensions);
 
   // Init device
   vkb::DeviceBuilder device_builder{selector_ret.value()};
-  for (void *device_extension : builder.device_extensions)
+  for (void *device_extension : builder.device_features)
     device_builder.add_pNext(device_extension);
 
   std::vector<vkb::CustomQueueDescription> queue_descs;
@@ -187,6 +189,52 @@ auto VulkanBackend::init(
 
   vma_functions.vkGetInstanceProcAddr = vkGetInstanceProcAddr;
   vma_functions.vkGetDeviceProcAddr   = vkGetDeviceProcAddr;
+
+  // Getting surface capabilities
+  VkPhysicalDeviceSurfaceInfo2KHR surface_caps_info{
+    .sType   = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR,
+    .pNext   = nullptr,
+    .surface = surface,
+  };
+
+  surface_caps.sType = VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_KHR;
+  surface_caps.pNext = nullptr;
+
+  auto surface_caps_result =
+    VULKAN_RESULT(vkGetPhysicalDeviceSurfaceCapabilities2KHR(
+      physical_device, &surface_caps_info, &surface_caps));
+
+  if (!surface_caps_result)
+    return {
+      BackendCreationError::create_vulkan_failed_to_get_surface_capabilities(
+        std::move(surface_caps_result.unwrap_err()))};
+
+  // Getting surface formats
+  uint32_t format_count = 0;
+
+  // First get the number of supported formats
+  surface_caps_result = VULKAN_RESULT(vkGetPhysicalDeviceSurfaceFormats2KHR(
+    physical_device, &surface_caps_info, &format_count, nullptr));
+
+  if (!surface_caps_result)
+    return {
+      BackendCreationError::create_vulkan_failed_to_get_surface_capabilities(
+        std::move(surface_caps_result.unwrap_err()))};
+
+  // Then get the formats
+  surface_formats = std::vector<VkSurfaceFormat2KHR>(
+    format_count,
+    VkSurfaceFormat2KHR{
+      VK_STRUCTURE_TYPE_SURFACE_FORMAT_2_KHR,
+      nullptr,
+      {VK_FORMAT_UNDEFINED, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR}});
+  surface_caps_result = VULKAN_RESULT(vkGetPhysicalDeviceSurfaceFormats2KHR(
+    physical_device,
+    &surface_caps_info,
+    &format_count,
+    surface_formats.data()));
+
+  LOG(DEBUG, "{} suported formats", format_count);
 
   LOG(DEBUG, "VkBackend init.");
   return {};
@@ -251,6 +299,7 @@ auto VulkanBackend::copy(const VulkanBackend &other) noexcept -> void {
   debug_messenger            = other.debug_messenger;
   api_version                = other.api_version;
   surface                    = other.surface;
+  surface_caps               = other.surface_caps;
   physical_device            = other.physical_device;
   physical_device_properties = other.physical_device_properties;
   device                     = other.device;
@@ -258,7 +307,8 @@ auto VulkanBackend::copy(const VulkanBackend &other) noexcept -> void {
 }
 
 auto VulkanBackend::move(VulkanBackend &other) noexcept -> void {
-  pool = std::move(other.pool);
+  surface_formats = std::move(other.surface_formats);
+  pool            = std::move(other.pool);
 }
 
 VulkanBackend::VulkanBackend(VulkanBackend &&rval) noexcept {

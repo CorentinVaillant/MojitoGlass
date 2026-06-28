@@ -5,6 +5,9 @@
 #include "backends/vulkan/helpers.hpp"
 #include "backends/vulkan/queue.hpp"
 #include "backends/vulkan/semaphore.hpp"
+#include "backends/vulkan/swapchain_builder.hpp"
+#include "backends/vulkan/vulkan_backend_infos.hpp"
+#include "vulkan/formats.hpp"
 #define VK_NO_PROTOTYPES
 #include <volk/volk.h>
 
@@ -21,7 +24,7 @@ namespace mjt {
 // ===== VulkanBackend ===== //
 
 class VulkanBackend {
-  // == Attributs == //
+  //== Attributs ==//
   bool nulled = true;  // Set to true if the backend is not valid
   static constexpr VkAllocationCallbacks *allocator =
     nullptr;  // > set to null for now, mayber change in the future to add
@@ -31,6 +34,8 @@ class VulkanBackend {
   uint32_t api_version;
 
   VkSurfaceKHR surface                                  = VK_NULL_HANDLE;
+  VkSurfaceCapabilities2KHR surface_caps                = {};
+  std::vector<VkSurfaceFormat2KHR> surface_formats      = {};
 
   VkPhysicalDevice physical_device                      = VK_NULL_HANDLE;
   VkPhysicalDeviceProperties physical_device_properties = {};
@@ -41,19 +46,23 @@ class VulkanBackend {
 
   std::unique_ptr<VulkanQueuePool> pool                 = nullptr;
 
-  // == Constructors == //
+  //== Constructors ==//
   VulkanBackend() = default;
   NO_COPY(VulkanBackend);
 
   void nullify() noexcept;
+  auto copy(const VulkanBackend &other) noexcept -> void;
+  auto move(VulkanBackend &other) noexcept -> void;
 
 public:
   VulkanBackend(VulkanBackend &&rval) noexcept;
   auto operator=(VulkanBackend &&rval) noexcept -> VulkanBackend &;
 
+  static auto create(VulkanBackendBuilder &builder, IVkSurface &surface)
+    -> Result<VulkanBackend, BackendCreationError>;
+
   ~VulkanBackend() noexcept;
 
-  // == Methods == //
 private:
   auto init(VulkanBackendBuilder &builder, IVkSurface &surface)
     -> std::optional<BackendCreationError>;
@@ -62,12 +71,50 @@ private:
   auto init_queue_pool(
     std::span<std::tuple<uint32_t, uint32_t, VkQueueFamilyProperties>>
       queue_families_props) -> VulkanResult<>;
-  auto copy(const VulkanBackend &other) noexcept -> void;
-  auto move(VulkanBackend &other) noexcept -> void;
 
+  // == Methods == //
 public:
-  static auto create(VulkanBackendBuilder &builder, IVkSurface &surface)
-    -> Result<VulkanBackend, BackendCreationError>;
+  ///@brief
+  auto get_info() const {
+    auto result = VulkanBackendInfos{
+      .apiVersion    = api_version,
+      .driverVersion = physical_device_properties.driverVersion,
+      .vendorID      = physical_device_properties.vendorID,
+      .deviceID      = physical_device_properties.deviceID,
+      .physical_device_type =
+        static_cast<PhysicalDeviceType>(physical_device_properties.deviceType),
+      .device_name = physical_device_properties.deviceName,
+      .pipeline_cache_uuid =
+        std::to_array(physical_device_properties.pipelineCacheUUID),
+      .limits            = physical_device_properties.limits,
+      .sparse_properties = physical_device_properties.sparseProperties,
+      .min_image_count   = surface_caps.surfaceCapabilities.minImageCount,
+      .max_image_count   = surface_caps.surfaceCapabilities.maxImageCount,
+      .current_extent =
+        extent_to_vec(surface_caps.surfaceCapabilities.currentExtent),
+      .min_image_extent =
+        extent_to_vec(surface_caps.surfaceCapabilities.minImageExtent),
+      .max_image_extent =
+        extent_to_vec(surface_caps.surfaceCapabilities.maxImageExtent),
+      .max_image_array_layers =
+        surface_caps.surfaceCapabilities.maxImageArrayLayers,
+      .supported_transforms =
+        {surface_caps.surfaceCapabilities.supportedTransforms},
+      .current_transform = surface_caps.surfaceCapabilities.currentTransform,
+      .supported_composite_alpha =
+        {surface_caps.surfaceCapabilities.supportedCompositeAlpha},
+      .supported_usage_flags =
+        surface_caps.surfaceCapabilities.supportedUsageFlags,
+      .supported_format = {}};
+
+    for (auto &format : surface_formats)
+      result.supported_format.emplace_back(
+        std::pair<VulkanFormat, VulkanColorSpace>{
+          VulkanFormat(format.surfaceFormat.format),
+          VulkanColorSpace(format.surfaceFormat.colorSpace)});
+
+    return result;
+  }
 
   // -- Queue pool
   auto queue_pool() -> VulkanQueuePool & { return *pool; }
@@ -100,6 +147,12 @@ public:
   auto create_timeline_semaphore(uint64_t initial_value)
     -> VulkanResult<VulkanTimelineSemaphore> {
     return VulkanTimelineSemaphore::create(device, allocator, initial_value);
+  }
+
+  // -- Swapchain
+  auto create_swapchain_builder() -> VulkanSwapchainBuilder {
+    return VulkanSwapchainBuilder(
+      device, surface, allocator, surface_caps, surface_formats);
   }
 };
 

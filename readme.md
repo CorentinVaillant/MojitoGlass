@@ -22,4 +22,5 @@ You will find a test executable inside the `bin` folder.
 - [X] Queue
 - [X] Semaphores
 - [ ] Swapchains
+ - Méthodes : resize, https://docs.vulkan.org/refpages/latest/refpages/source/VkSwapchainKHR.html
 

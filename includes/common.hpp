@@ -52,7 +52,7 @@ enum LogLvl {
 #else
 #define LOG(level, ...)                                                        \
   do {                                                                         \
-    if (mjt::VERBOSITY <= level) {                                                  \
+    if (mjt::VERBOSITY <= level) {                                             \
       fmt::print(                                                              \
         "[{}LOG {}] {}::{} ({}) ",                                             \
         ansi_code::BBLU,                                                       \

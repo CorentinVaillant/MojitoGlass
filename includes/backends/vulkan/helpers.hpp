@@ -51,7 +51,7 @@ struct EnumFlagsWrapper {
   }
 
   constexpr auto operator|=(EnumFlagsWrapper flags) -> EnumFlagsWrapper & {
-    flags |= flags.flags;
+    flags.flags |= flags.flags;
     return *this;
   }
 
